@@ -1,0 +1,8 @@
+[package]
+name = "reversi-dto"
+version = "0.1.0+dev"
+edition = "2024"
+
+[dependencies]
+reversi = { path = "../../core" }
+serde = { version = "1.0", features = ["derive"] }
