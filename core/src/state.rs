@@ -226,7 +226,7 @@ impl GameState {
         } else {
             // 相手に打つ手がないためパス
             passed = true;
-            self.consecutive_passes += 1;
+            self.consecutive_passes = 1;
 
             // さらに自分にも打つ手がない場合は連続パスとなりゲーム終了
             self.turn = self.turn.opposite();
