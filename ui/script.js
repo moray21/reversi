@@ -1,8 +1,59 @@
 // Lucide アイコン初期化
 lucide.createIcons();
 
-const invoke = window.__TAURI__.core.invoke;
+// Tauri環境かどうかの自動判定
+const _isTauri = Boolean(window.__TAURI__);
 
+class ReversiBackend {
+    constructor() {
+        this.wasmEngine = null;
+        this.wasmModule = null;
+    }
+
+    async init() {
+        if (!_isTauri) {
+            // Web環境の場合のみ WASM モジュールを動的インポートして初期化
+            const wasm = await import('./pkg/reversi_wasm.js');
+            await wasm.default();
+            this.wasmModule = wasm;
+        }
+    }
+
+    async newGame(size) {
+        if (_isTauri) {
+            return await window.__TAURI__.core.invoke("new_game", { size });
+        } else {
+            this.wasmEngine = new this.wasmModule.WasmGameEngine(size);
+            return this.wasmEngine.get_state();
+        }
+    }
+
+    async putDisc(row, col) {
+        if (_isTauri) {
+            return await window.__TAURI__.core.invoke("put_disc", { row, col });
+        } else {
+            return this.wasmEngine.put_disc(row, col);
+        }
+    }
+
+    async undo() {
+        if (_isTauri) {
+            return await window.__TAURI__.core.invoke("undo");
+        } else {
+            return this.wasmEngine.undo();
+        }
+    }
+
+    async putByAi(depth) {
+        if (_isTauri) {
+            return await window.__TAURI__.core.invoke("put_by_ai", { depth });
+        } else {
+            return this.wasmEngine.put_by_ai(depth);
+        }
+    }
+}
+
+const backend = new ReversiBackend();
 
 let currentSize = 8;
 let gameMode = 'pvp';     // 'pvp' または 'pve'
@@ -131,7 +182,7 @@ async function newGame(size) {
 
     try {
         setLoading(true);
-        const res = await invoke("new_game", { size });
+        const res = await backend.newGame(size);
         setMessage(`${size}x${size} の新規ゲームを開始しました`, true);
         isGameOver = res.is_game_over;
         turn = res.turn;
@@ -154,7 +205,7 @@ async function putDisc(row, col) {
 
     try {
         setLoading(true);
-        const res = await invoke("put_disc", { row, col });
+        const res = await backend.putDisc(row, col);
         isGameOver = res.is_game_over;
         turn = res.turn;
         checkPass(res);
@@ -200,7 +251,7 @@ async function playAiManual() {
         const depth = parseInt(document.getElementById("ai-depth").value) || 4;
         setLoading(true);
         setMessage("AIが思考中...", false);
-        const res = await invoke("put_by_ai", { depth });
+        const res = await backend.putByAi(depth);
         isGameOver = res.is_game_over;
         turn = res.turn;
         checkPass(res);
@@ -226,9 +277,9 @@ async function undo() {
         setLoading(true);
         if (gameMode === 'pve') {
             // AI戦の場合は2手戻す（AIの手と自分の手）
-            let res = await invoke("undo");
+            const res = await backend.undo();
             try {
-                const res2 = await invoke("undo");
+                const res2 = await backend.undo();
                 if (res2) res = res2;
             } catch (_) { }
 
@@ -237,7 +288,7 @@ async function undo() {
             updateUI(res);
             setMessage("2手戻しました", true);
         } else {
-            const res = await invoke("undo");
+            const res = await backend.undo();
             isGameOver = res.is_game_over;
             turn = res.turn;
             updateUI(res);
@@ -356,7 +407,12 @@ function closeModalAndReset() {
 }
 
 // 初期起動
-window.onload = () => {
+window.onload = async () => {
+    try {
+        await backend.init();
+    } catch (e) {
+        console.error("WASMの初期化に失敗しました:", e);
+    }
     newGame(8);
 };
 
