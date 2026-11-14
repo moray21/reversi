@@ -1,0 +1,77 @@
+name: Rust CI
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  ci_rust:
+    name: Check, Lint, Test & Coverage
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      # llvm-tools-preview と clippy を有効化
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview, clippy
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      # Check
+      - name: Cargo Check
+        run: cargo check --workspace --all-targets
+
+      # Clippy
+      - name: Cargo Clippy
+        run: cargo clippy --workspace --all-targets
+
+      # Test
+      - name: Cargo Test
+        run: cargo test --workspace
+
+      # カバレッジの計測
+      - name: Generate Coverage Summary
+        run: |
+          cargo +nightly llvm-cov --doctests --workspace --summary-only > coverage-summary.txt
+          {
+            echo "COVERAGE_SUMMARY<<EOF"
+            cat coverage-summary.txt
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      # 出力
+      - name: Write to Job Summary
+        run: |
+          echo "### 📊 Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          cat coverage-summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # Pull Requestのコメント欄にカバレッジ結果を投稿
+      - name: Comment Coverage on PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage
+          message: |
+            ### 📊 Code Coverage Summary
+            ```text
+            ${{ env.COVERAGE_SUMMARY }}
+            ```
