@@ -2994,7 +2994,7 @@ dependencies = [
 
 [[package]]
 name = "reversi-dto"
-version = "0.1.0+dev"
+version = "0.1.0"
 dependencies = [
  "reversi",
  "serde",
@@ -3002,7 +3002,7 @@ dependencies = [
 
 [[package]]
 name = "reversi-tauri"
-version = "0.1.0+dev"
+version = "0.1.0"
 dependencies = [
  "reversi",
  "reversi-dto",
