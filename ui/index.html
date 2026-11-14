@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reversi AI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body
+    class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-white relative overflow-x-hidden">
+
+    <!-- ローディングオーバーレイ -->
+    <div id="loading-overlay"
+        class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex flex-col items-center space-y-3">
+            <div class="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-xs font-mono text-cyan-300">Processing Engine...</span>
+        </div>
+    </div>
+
+    <!-- パス通知オーバーレイ -->
+    <div id="pass-overlay"
+        class="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="text-center space-y-2 animate-pulse">
+            <span
+                class="text-6xl font-extrabold font-mono tracking-widest bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent drop-shadow-lg">PASS</span>
+            <p class="text-xs font-mono text-slate-300 tracking-wider">打てる手がないためパスします</p>
+        </div>
+    </div>
+
+    <!-- ヘッダー -->
+    <header
+        class="w-full border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <i data-lucide="cpu" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1
+                    class="font-bold text-lg tracking-wider bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                    REVERSI AI</h1>
+                <!-- <p class="text-xs text-slate-400 font-mono">Tauri v2 + Rust Core</p> -->
+            </div>
+        </div>
+
+        <!-- 右側：ハンバーガーボタン & ステータス -->
+        <div class="flex items-center space-x-3">
+            <div
+                class="hidden sm:flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-800 text-xs font-mono">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-emerald-400">READY</span>
+            </div>
+            <!-- ハンバーガーメニュー開閉ボタン -->
+            <button onclick="toggleSettingsMenu()"
+                class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-center text-slate-300 hover:text-white transition-all shadow-md cursor-pointer">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 設定ハンバーガーメニュー（ドロワー） -->
+    <div id="settings-drawer" class="fixed inset-0 z-50 pointer-events-none transition-all duration-300">
+        <!-- バックドロップ -->
+        <div id="settings-backdrop" onclick="toggleSettingsMenu()"
+            class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm opacity-0 transition-opacity duration-300 pointer-events-none">
+        </div>
+
+        <!-- スライディングパネル -->
+        <div id="settings-panel"
+            class="absolute right-0 top-0 h-full w-80 max-w-full glass-panel border-l border-slate-800 p-6 flex flex-col justify-between transform translate-x-full transition-transform duration-300 pointer-events-auto shadow-2xl">
+            <div class="space-y-6">
+                <!-- パネルヘッダー -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="sliders" class="w-5 h-5 text-purple-400"></i>
+                        <h2 class="font-bold text-sm tracking-wider font-mono text-white">SETTINGS</h2>
+                    </div>
+                    <button onclick="toggleSettingsMenu()"
+                        class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition cursor-pointer">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- モード選択 -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-slate-300 font-mono">Game Mode</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="mode-btn-pvp" onclick="setGameMode('pvp')"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-emerald-600 text-white shadow-md cursor-pointer">プレイヤー</button>
+                        <button id="mode-btn-pve" onclick="setGameMode('pve')"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer">AI対戦</button>
+                    </div>
+                </div>
+
+                <!-- プレイヤー手番選択（AI対戦時のみ表示） -->
+                <div id="ai-color-container" class="space-y-2 hidden">
+                    <label class="block text-xs font-medium text-slate-300 font-mono">Your Color (vs AI)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="color-btn-black" onclick="setPlayerColor(1)"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-cyan-600 text-white shadow-md cursor-pointer">黒
+                            (先手)</button>
+                        <button id="color-btn-white" onclick="setPlayerColor(-1)"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer">白
+                            (後手)</button>
+                    </div>
+                </div>
+
+                <!-- 盤面サイズ -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-slate-300 font-mono">Board Size</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="size-btn-4" onclick="setBoardSize(4)"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer">4x4</button>
+                        <button id="size-btn-6" onclick="setBoardSize(6)"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer">6x6</button>
+                        <button id="size-btn-8" onclick="setBoardSize(8)"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-emerald-600 text-white shadow-md shadow-emerald-600/20 cursor-pointer">8x8</button>
+                    </div>
+                </div>
+
+                <!-- AI探索深度 -->
+                <!-- <div class="space-y-2 bg-slate-900/80 p-3.5 rounded-xl border border-slate-800"> -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-slate-200 font-mono">AI Thingking Depth</label>
+                        <!-- <span class="text-xs font-mono text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60">Config</span> -->
+                    </div>
+                    <input type="number" id="ai-depth" min="1" max="16" value="12"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500">
+                </div>
+            </div>
+
+            <!-- ドロワーフッター：New Game ボタンを一番下に配置 -->
+            <div class="pt-4 border-t border-slate-800 space-y-3">
+                <button onclick="newGame(currentSize); toggleSettingsMenu();"
+                    class="w-full flex items-center justify-center space-x-1.5 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-cyan-600/20 transition-all cursor-pointer">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    <span>New Game</span>
+                </button>
+                <!-- <div class="text-center text-[10px] font-mono text-slate-500">
+                    Tauri v2 Native Reversi Engine
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ（中央揃えの1カラムデザイン） -->
+    <main class="flex-1 max-w-lg w-full mx-auto p-4 flex flex-col items-center justify-center space-y-4">
+
+        <!-- オセロ盤メインカード（ボード＋操作ボタン＋スコアを統合） -->
+        <div class="glass-panel-glow p-5 rounded-3xl w-full flex flex-col items-center relative shadow-2xl space-y-4">
+
+            <!-- ボードヘッダー -->
+            <div class="w-full flex items-center justify-between px-1">
+                <div class="text-xs font-mono text-slate-400 flex items-center space-x-2">
+                    <i data-lucide="grid" class="w-4 h-4 text-cyan-400"></i>
+                    <span id="mode-display-label">BOARD GRID (対人戦)</span>
+                </div>
+                <!-- 手番表示 -->
+                <div
+                    class="flex items-center space-x-2 bg-slate-900/90 px-3 py-1 rounded-full border border-slate-800 font-mono text-xs shadow-inner">
+                    <div id="turn-indicator" class="w-2.5 h-2.5 rounded-full bg-black border border-slate-600"></div>
+                    <span id="turn-text" class="font-bold text-white text-[11px]">黒の手番</span>
+                </div>
+            </div>
+
+            <!-- ボードフッター：黒・白のスコアカード -->
+            <div class="w-full pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-3 font-mono">
+                <div id="player-black-card"
+                    class="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 transition-all">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-3.5 h-3.5 rounded-full bg-black border border-slate-600 shadow-inner"></div>
+                        <span class="text-xs text-slate-300 font-medium">Black</span>
+                    </div>
+                    <span id="score-black" class="text-base font-bold font-mono text-white">2</span>
+                </div>
+                <div id="player-white-card"
+                    class="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 transition-all">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-3.5 h-3.5 rounded-full bg-white border border-slate-300 shadow-inner"></div>
+                        <span class="text-xs text-slate-300 font-medium">White</span>
+                    </div>
+                    <span id="score-white" class="text-base font-bold font-mono text-white">2</span>
+                </div>
+            </div>
+
+            <!-- ボードコンテナ（正方形を完全に維持するアスペクト比） -->
+            <div id="board-container"
+                class="bg-slate-950/90 border-2 border-slate-800 rounded-2xl p-3 shadow-2xl w-full aspect-square flex items-center justify-center">
+                <!-- 動的生成 -->
+            </div>
+
+            <!-- ボードの下：UndoとLet AI Playボタンを1行で並べる -->
+            <div class="w-full grid grid-cols-2 gap-3">
+                <button onclick="undo()"
+                    class="flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs transition-all cursor-pointer shadow-md">
+                    <i data-lucide="corner-up-left" class="w-4 h-4"></i>
+                    <span>Undo</span>
+                </button>
+                <button onclick="playAiManual()"
+                    class="flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition-all cursor-pointer">
+                    <i data-lucide="bot" class="w-4 h-4"></i>
+                    <span>AI</span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- ステータスメッセージ（ボードの下に配置、初期は非表示） -->
+        <div id="message-box"
+            class="w-full glass-panel rounded-xl p-3 text-xs font-mono text-cyan-300 text-center border border-cyan-500/20 hidden">
+        </div>
+
+    </main>
+
+    <!-- モーダル（ゲーム終了時） -->
+    <div id="game-over-modal"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel-glow p-8 rounded-3xl max-w-sm w-full text-center space-y-5">
+            <div id="modal-icon" class="text-4xl mx-auto flex items-center justify-center">🏆</div>
+            <div>
+                <h3 id="modal-title" class="text-xl font-bold text-white mb-1">GAME OVER</h3>
+                <p id="modal-desc" class="text-sm font-mono text-cyan-300">勝敗が決定しました</p>
+            </div>
+            <button onclick="closeModalAndReset()"
+                class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/30 hover:opacity-90 transition-all cursor-pointer">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- <footer class="w-full py-3 text-center text-xs text-slate-400 font-mono border-t border-slate-900 bg-slate-950/50">
+        Reversi AI Core &bull; Tauri v2 Desktop Environment
+    </footer> -->
+
+    <!-- スクリプトの読み込み -->
+    <script type="module" src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
