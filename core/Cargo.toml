@@ -1,0 +1,8 @@
+[package]
+name = "reversi"
+version = "0.1.0+dev"
+edition = "2024"
+
+[dependencies]
+ndarray = "0.17.2"
+rand = "0.10"
