@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Version from Cargo.toml
+        run: |
+          VER=$(python3 -c '
+          import tomllib
+
+          with open("Cargo.toml", "rb") as f:
+              data = tomllib.load(f)
+          version = data["workspace"]["package"]["version"]
+
+          print(version)
+          ')
+
+          echo "VERSION=$VER" >> $GITHUB_ENV
+          echo "Target Version: $VER"
+
+      - name: Check if Tag Exists
+        id: check_tag
+        run: |
+          TAG="v${{ env.VERSION }}"
+          # すでに同じタグが存在するかチェック
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "EXISTS=true" >> $GITHUB_ENV
+            echo "Tag $TAG already exists. Skipping release."
+          else
+            echo "EXISTS=false" >> $GITHUB_ENV
+            echo "Tag $TAG does not exist. Proceeding to release."
+          fi
+
+      - name: Create Release and Tag
+        if: env.EXISTS == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
