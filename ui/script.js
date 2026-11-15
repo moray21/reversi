@@ -63,6 +63,14 @@ let messageTimer = null;
 let isAiThinking = false;
 let isGameOver = false;
 
+function waitNextPaint(ms = 50) {
+    return new Promise(resolve => {
+        requestAnimationFrame(() => {
+            setTimeout(resolve, ms);
+        });
+    });
+}
+
 // ハンバーガーメニューの開閉トグル
 function toggleSettingsMenu() {
     const drawer = document.getElementById("settings-drawer");
@@ -124,13 +132,40 @@ function setBoardSize(size) {
     toggleSettingsMenu();
 }
 
-async function setLoading(isLoading) {
-    const overlay = document.getElementById("loading-overlay");
-    if (!overlay) return;
-    if (isLoading) {
-        overlay.classList.remove("opacity-0", "pointer-events-none");
+function setAiThinkingUI(thinking) {
+    isAiThinking = thinking;
+    const turnText = document.getElementById("turn-text");
+    const turnBadge = turnText ? turnText.parentElement : null;
+    const indicator = document.getElementById("turn-indicator");
+
+    // 思考中はボタン操作を無効化
+    document.querySelectorAll("button").forEach(btn => {
+        if (btn.getAttribute("onclick")?.includes("undo") || btn.getAttribute("onclick")?.includes("playAiManual")) {
+            btn.disabled = thinking;
+            btn.style.opacity = thinking ? "0.5" : "1";
+        }
+    });
+
+    if (thinking) {
+        const colorName = turn === 1 ? "黒" : "白";
+        if (turnBadge) {
+            turnBadge.className = "flex items-center space-x-2 bg-purple-950/90 px-3 py-1 rounded-full border border-purple-400 font-mono text-xs shadow-lg shadow-purple-500/30 animate-pulse transition-all";
+        }
+        if (indicator) {
+            indicator.className = "w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping";
+        }
+        if (turnText) {
+            turnText.innerText = `AI (${colorName}) 思考中...`;
+            turnText.className = "font-bold text-purple-200 text-[11px]";
+        }
+        setMessage(`🤖 AI (${colorName}) が次の手を計算しています...`, false);
     } else {
-        overlay.classList.add("opacity-0", "pointer-events-none");
+        if (turnBadge) {
+            turnBadge.className = "flex items-center space-x-2 bg-slate-900/90 px-3 py-1 rounded-full border border-slate-800 font-mono text-xs shadow-inner transition-all";
+        }
+        if (turnText) {
+            turnText.className = "font-bold text-white text-[11px]";
+        }
     }
 }
 
@@ -178,10 +213,9 @@ function setMessage(text, autoClear = true) {
 
 async function newGame(size) {
     currentSize = size;
-    isAiThinking = false;
+    setAiThinkingUI(false);
 
     try {
-        setLoading(true);
         const res = await backend.newGame(size);
         setMessage(`${size}x${size} の新規ゲームを開始しました`, true);
         isGameOver = res.is_game_over;
@@ -194,8 +228,6 @@ async function newGame(size) {
         }
     } catch (e) {
         setMessage("エラー: " + e, false);
-    } finally {
-        setLoading(false);
     }
 }
 
@@ -204,7 +236,6 @@ async function putDisc(row, col) {
     setMessage("", false);
 
     try {
-        setLoading(true);
         const res = await backend.putDisc(row, col);
         isGameOver = res.is_game_over;
         turn = res.turn;
@@ -217,8 +248,6 @@ async function putDisc(row, col) {
         }
     } catch (e) {
         setMessage(e, true);
-    } finally {
-        setLoading(false);
     }
 }
 
@@ -227,46 +256,53 @@ async function triggerAiTurn() {
     if (isAiThinking) return;
 
     try {
-        while (gameMode === 'pve') {
-            await playAiManual();
-
-            // ゲーム終了時、または手番がプレイヤーの色に戻った場合はループを抜ける
-            if (isGameOver || turn === playerColor) {
-                break;
-            }
+        while (gameMode === 'pve' && !isGameOver && turn !== playerColor) {
+            await executeSingleAiMove();
         }
     } catch (e) {
         setMessage(e, true);
-    } finally {
-        setLoading(false);
+        setAiThinkingUI(false);
     }
+}
+
+async function executeSingleAiMove() {
+    setAiThinkingUI(true);
+
+    await waitNextPaint(50);
+
+    const depth = parseInt(document.getElementById("ai-depth")?.value) || 4;
+    const minThinkMs = 500;
+    const startTime = performance.now();
+
+    const res = await backend.putByAi(depth);
+
+    const elapsed = performance.now() - startTime;
+    if (elapsed < minThinkMs) {
+        await new Promise(r => setTimeout(r, minThinkMs - elapsed));
+    }
+
+    isGameOver = res.is_game_over;
+    turn = res.turn;
+
+    setAiThinkingUI(false);
+    setMessage("", false);
+    checkPass(res);
+    updateUI(res);
 }
 
 // Let AI Playボタン
 async function playAiManual() {
-    if (isAiThinking) return;
+    if (isAiThinking || isGameOver) return;
 
     try {
-        isAiThinking = true;
-        const depth = parseInt(document.getElementById("ai-depth").value) || 4;
-        setLoading(true);
-        setMessage("AIが思考中...", false);
-        const res = await backend.putByAi(depth);
-        isGameOver = res.is_game_over;
-        turn = res.turn;
-        checkPass(res);
-        updateUI(res);
-        setMessage("AIが手を進めました", true);
-        isAiThinking = false;
-
+        await executeSingleAiMove();
         // プレイヤーが打った後、AI対戦モードかつゲーム未終了かつ次のターンがAIなら自動で打たせる
-        if (gameMode === 'pve' && !res.is_game_over && res.turn !== playerColor) {
+        if (gameMode === 'pve' && !isGameOver && turn !== playerColor) {
             await triggerAiTurn();
         }
     } catch (e) {
         setMessage(e, true);
-    } finally {
-        setLoading(false);
+        setAiThinkingUI(false);
     }
 }
 
@@ -274,7 +310,6 @@ async function undo() {
     if (isAiThinking) return;
 
     try {
-        setLoading(true);
         if (gameMode === 'pve') {
             // AI戦の場合は2手戻す（AIの手と自分の手）
             const res = await backend.undo();
@@ -296,8 +331,6 @@ async function undo() {
         }
     } catch (e) {
         setMessage("これ以上戻れません", true);
-    } finally {
-        setLoading(false);
     }
 }
 
