@@ -471,12 +471,12 @@ function updateUI(state) {
             if (discVal === 1) {
                 // 黒石
                 const stone = document.createElement("div");
-                stone.className = "w-[82%] h-[82%] rounded-full bg-gradient-to-br from-slate-700 via-slate-900 to-black shadow-lg animate-fade-in border border-slate-700/50";
+                stone.className = "w-[82%] h-[82%] rounded-full bg-gradient-to-br from-slate-700 via-slate-900 to-black shadow-lg border border-slate-700/50 flex items-center justify-center relative";
                 cell.appendChild(stone);
             } else if (discVal === -1) {
                 // 白石
                 const stone = document.createElement("div");
-                stone.className = "w-[82%] h-[82%] rounded-full bg-gradient-to-br from-white via-slate-100 to-slate-300 shadow-lg animate-fade-in border border-slate-200";
+                stone.className = "w-[82%] h-[82%] rounded-full bg-gradient-to-br from-white via-slate-100 to-slate-300 shadow-lg border border-slate-200 flex items-center justify-center relative";
                 cell.appendChild(stone);
             } else if (legalSet.has(`${r},${c}`) && canPlayerClick) {
                 // 合法手ガイド
