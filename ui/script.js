@@ -267,6 +267,7 @@ async function triggerAiTurn() {
 
 async function executeSingleAiMove() {
     setAiThinkingUI(true);
+    updateTurnAndScoreCards(); // AI側スコアカードを思考中スタイルに更新
 
     await waitNextPaint(50);
 
@@ -334,6 +335,36 @@ async function undo() {
     }
 }
 
+// 手番バッジとスコアカードのハイライト更新
+function updateTurnAndScoreCards() {
+    const bCard = document.getElementById("player-black-card");
+    const wCard = document.getElementById("player-white-card");
+    const indicator = document.getElementById("turn-indicator");
+    const turnText = document.getElementById("turn-text");
+
+    const activeCardClass = isAiThinking
+        ? "flex items-center justify-between px-4 py-2.5 rounded-xl bg-purple-950/70 border-2 border-purple-400 shadow-lg shadow-purple-500/30 animate-pulse transition-all"
+        : "flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900 border-2 border-cyan-500/80 shadow-lg shadow-cyan-500/10 transition-all";
+
+    const inactiveCardClass = "flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 opacity-65 transition-all";
+
+    if (turn === 1) {
+        if (bCard) bCard.className = activeCardClass;
+        if (wCard) wCard.className = inactiveCardClass;
+        if (indicator && !isAiThinking) indicator.className = "w-2.5 h-2.5 rounded-full bg-black border border-slate-600";
+        if (turnText && !isAiThinking) {
+            turnText.innerText = gameMode === 'pve' && playerColor === 1 ? "黒の手番 (あなた)" : "黒の手番";
+        }
+    } else {
+        if (wCard) wCard.className = activeCardClass;
+        if (bCard) bCard.className = inactiveCardClass;
+        if (indicator && !isAiThinking) indicator.className = "w-2.5 h-2.5 rounded-full bg-white border border-slate-400";
+        if (turnText && !isAiThinking) {
+            turnText.innerText = gameMode === 'pve' && playerColor === -1 ? "白の手番 (あなた)" : "白の手番";
+        }
+    }
+}
+
 function updateUI(state) {
     checkPass(state);
 
@@ -385,24 +416,10 @@ function updateUI(state) {
     document.getElementById("score-black").innerText = state.n_black;
     document.getElementById("score-white").innerText = state.n_white;
 
-    // 手番カードのハイライト
-    const bCard = document.getElementById("player-black-card");
-    const wCard = document.getElementById("player-white-card");
-    const indicator = document.getElementById("turn-indicator");
-    const turnText = document.getElementById("turn-text");
+    // 手番バッジ・スコアカード更新
+    updateTurnAndScoreCards();
 
-    if (state.turn === 1) {
-        bCard.className = "flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900 border-2 border-cyan-500/80 shadow-lg shadow-cyan-500/10 transition-all";
-        wCard.className = "flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 transition-all";
-        indicator.className = "w-2.5 h-2.5 rounded-full bg-black border border-slate-600";
-        turnText.innerText = "黒の手番";
-    } else {
-        bCard.className = "flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 transition-all";
-        wCard.className = "flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900 border-2 border-cyan-500/80 shadow-lg shadow-cyan-500/10 transition-all";
-        indicator.className = "w-2.5 h-2.5 rounded-full bg-white border border-slate-400";
-        turnText.innerText = "白の手番";
-    }
-
+    // ゲーム終了判定
     if (state.is_game_over) {
         showGameOverModal(state);
     }
