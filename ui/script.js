@@ -170,19 +170,47 @@ function setAiThinkingUI(thinking) {
 }
 
 // パス検知および全画面オーバーレイ表示
-function checkPass(state) {
+async function checkPass(state) {
     if (state.consecutive_passes == 1 && !state.is_game_over) {
-        showPassOverlay();
+        const passedColor = -state.turn;
+        await showPassOverlay(passedColor);
+        updateUI(state);
     }
 }
 
-function showPassOverlay() {
+async function showPassOverlay(passedColor) {
     const overlay = document.getElementById("pass-overlay");
     if (!overlay) return;
+
+    const colorStr = passedColor === 1 ? "黒" : "白";
+    let roleStr = "";
+    if (gameMode === 'pvp') {
+        roleStr = passedColor === playerColor ? "（Player1）" : "（Player2）";
+    }
+    if (gameMode === 'pve') {
+        roleStr = passedColor === playerColor ? "（あなた）" : "（AI）";
+    }
+    const stoneEmoji = passedColor === 1 ? "⚫" : "⚪";
+
+    // HTMLを変更せずに既存の #pass-overlay 内のテキスト要素を探して更新
+    const textElements = overlay.querySelectorAll("p, span, div");
+    let updated = false;
+    textElements.forEach(el => {
+        if (el.children.length === 0 && el.innerText.includes("打てる")) {
+            el.innerText = `${stoneEmoji} ${colorStr}${roleStr}は打てる場所がないためパスします`;
+            updated = true;
+        }
+    });
+
+    // 該当要素が見つからない場合のフォールバックとしてメッセージボックスにも表示
+    setMessage(`${stoneEmoji} ${colorStr}${roleStr}がパスしました`, true);
+
+    await new Promise(r => setTimeout(r, 300));
     overlay.classList.remove("opacity-0", "pointer-events-none");
     setTimeout(() => {
         overlay.classList.add("opacity-0", "pointer-events-none");
     }, 1200);
+    await new Promise(r => setTimeout(r, 1200));
 }
 
 function setMessage(text, autoClear = true) {
@@ -232,15 +260,17 @@ async function newGame(size) {
 }
 
 async function putDisc(row, col) {
-    if (isAiThinking) return;
+    if (isAiThinking || isGameOver) return;
+    if (gameMode === 'pve' && turn !== playerColor) return;
+
     setMessage("", false);
 
     try {
         const res = await backend.putDisc(row, col);
         isGameOver = res.is_game_over;
         turn = res.turn;
-        checkPass(res);
         updateUI(res);
+        await checkPass(res);
 
         // プレイヤーが打った後、AI対戦モードかつゲーム未終了かつ次のターンがAIなら自動で打たせる
         if (gameMode === 'pve' && !res.is_game_over && res.turn !== playerColor) {
@@ -253,7 +283,7 @@ async function putDisc(row, col) {
 
 // AIの手を自動または手動で実行する（whileループによる堅牢な手番・フラグ管理）
 async function triggerAiTurn() {
-    if (isAiThinking) return;
+    if (isAiThinking || isGameOver) return;
 
     try {
         while (gameMode === 'pve' && !isGameOver && turn !== playerColor) {
@@ -287,8 +317,8 @@ async function executeSingleAiMove() {
 
     setAiThinkingUI(false);
     setMessage("", false);
-    checkPass(res);
     updateUI(res);
+    await checkPass(res);
 }
 
 // Let AI Playボタン
@@ -366,8 +396,6 @@ function updateTurnAndScoreCards() {
 }
 
 function updateUI(state) {
-    checkPass(state);
-
     const container = document.getElementById("board-container");
     if (!container) return;
     container.innerHTML = "";
