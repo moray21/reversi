@@ -386,7 +386,7 @@ async function undo() {
     try {
         if (gameMode === 'pve') {
             // AI戦の場合は2手戻す（AIの手と自分の手）
-            const res = await backend.undo();
+            let res = await backend.undo();
             try {
                 const res2 = await backend.undo();
                 if (res2) res = res2;
