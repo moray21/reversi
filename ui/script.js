@@ -63,12 +63,35 @@ let messageTimer = null;
 let isAiThinking = false;
 let isGameOver = false;
 
+let prevBoard = null;
+let lastMove = null; // [row, col]
+
 function waitNextPaint(ms = 50) {
     return new Promise(resolve => {
         requestAnimationFrame(() => {
             setTimeout(resolve, ms);
         });
     });
+}
+
+// 盤面データのディープコピー
+function cloneBoard(board) {
+    if (!board) return null;
+    return board.map(row => [...row]);
+}
+
+// 前回盤面と今回盤面を比較し、新しく石が置かれた座標 [row, col] を検出
+function detectLastMove(oldBoard, newBoard) {
+    if (!oldBoard || !newBoard || oldBoard.length !== newBoard.length) return null;
+    const size = newBoard.length;
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (oldBoard[r][c] === 0 && newBoard[r][c] !== 0) {
+                return [r, c];
+            }
+        }
+    }
+    return null;
 }
 
 // ハンバーガーメニューの開閉トグル
@@ -242,12 +265,25 @@ function setMessage(text, autoClear = true) {
 async function newGame(size) {
     currentSize = size;
     setAiThinkingUI(false);
+    lastMove = null;
+    prevBoard = null;
+
+    [4, 6, 8].forEach(s => {
+        const btn = document.getElementById(`size-btn-${s}`);
+        if (!btn) return;
+        if (s === size) {
+            btn.className = "px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-emerald-600 text-white shadow-md shadow-emerald-600/20 cursor-pointer";
+        } else {
+            btn.className = "px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer";
+        }
+    });
 
     try {
         const res = await backend.newGame(size);
         setMessage(`${size}x${size} の新規ゲームを開始しました`, true);
         isGameOver = res.is_game_over;
         turn = res.turn;
+        prevBoard = cloneBoard(res.board);
         updateUI(res);
 
         // AI戦でプレイヤーが白（後手）の場合、先手のAIに最初に自動で打たせる
@@ -267,6 +303,8 @@ async function putDisc(row, col) {
 
     try {
         const res = await backend.putDisc(row, col);
+        lastMove = [row, col];
+        prevBoard = cloneBoard(res.board);
         isGameOver = res.is_game_over;
         turn = res.turn;
         updateUI(res);
@@ -312,6 +350,11 @@ async function executeSingleAiMove() {
         await new Promise(r => setTimeout(r, minThinkMs - elapsed));
     }
 
+    const detected = detectLastMove(prevBoard, res.board);
+    if (detected) {
+        lastMove = detected;
+    }
+    prevBoard = cloneBoard(res.board);
     isGameOver = res.is_game_over;
     turn = res.turn;
 
@@ -349,12 +392,16 @@ async function undo() {
                 if (res2) res = res2;
             } catch (_) { }
 
+            lastMove = null;
+            prevBoard = cloneBoard(res.board);
             isGameOver = res.is_game_over;
             turn = res.turn;
             updateUI(res);
             setMessage("2手戻しました", true);
         } else {
             const res = await backend.undo();
+            lastMove = null;
+            prevBoard = cloneBoard(res.board);
             isGameOver = res.is_game_over;
             turn = res.turn;
             updateUI(res);
@@ -407,12 +454,18 @@ function updateUI(state) {
     grid.style.gridTemplateRows = `repeat(${size}, minmax(0, 1fr))`;
 
     const legalSet = new Set((state.legal_points || []).map(p => `${p[0]},${p[1]}`));
-    const isPlayerTurn = (gameMode === 'pvp') || (state.turn === playerColor);
+    const canPlayerClick = !isAiThinking && !state.is_game_over && (gameMode === 'pvp' || state.turn === playerColor);
 
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             const cell = document.createElement("button");
-            cell.className = "w-full h-full aspect-square bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-center relative transition hover:border-slate-700 shadow-inner cursor-pointer";
+            const isLastMoveCell = lastMove && lastMove[0] === r && lastMove[1] === c;
+
+            // 直前に置かれたマスを枠線でハイライト
+            cell.className = `w-full h-full aspect-square rounded-xl flex items-center justify-center relative transition shadow-inner ${isLastMoveCell
+                ? "bg-slate-800/90 border-2 border-amber-400/40 shadow-amber-500/20"
+                : "bg-slate-900/60 border border-slate-800 hover:border-slate-700"
+                }`;
 
             const discVal = state.board[r][c];
             if (discVal === 1) {
@@ -425,7 +478,7 @@ function updateUI(state) {
                 const stone = document.createElement("div");
                 stone.className = "w-[82%] h-[82%] rounded-full bg-gradient-to-br from-white via-slate-100 to-slate-300 shadow-lg animate-fade-in border border-slate-200";
                 cell.appendChild(stone);
-            } else if (legalSet.has(`${r},${c}`) && !state.is_game_over) {
+            } else if (legalSet.has(`${r},${c}`) && canPlayerClick) {
                 // 合法手ガイド
                 cell.className = "w-full h-full aspect-square bg-cyan-950/30 border-2 border-cyan-500/50 rounded-xl flex items-center justify-center relative transition hover:bg-cyan-900/40 shadow-inner cursor-pointer";
                 const hint = document.createElement("div");
