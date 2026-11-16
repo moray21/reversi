@@ -9,7 +9,7 @@
 
 use reversi::{BoardSize, GameState, Point};
 use reversi_dto::GameStateDto;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
 /// アプリケーション全体で共有するゲーム(共有可能なデータ)
@@ -18,7 +18,7 @@ use tauri::State;
 ///
 /// * `game` - ゲーム状態
 pub struct AppState {
-    pub game: Mutex<GameState>,
+    pub game: Arc<Mutex<GameState>>,
 }
 
 // ------------------------------ Command ------------------------------
@@ -125,13 +125,21 @@ fn undo(state: State<'_, AppState>) -> Result<GameStateDto, String> {
 ///
 /// * `GameStateDto`
 #[tauri::command]
-fn put_by_ai(depth: u32, state: State<'_, AppState>) -> Result<GameStateDto, String> {
-    // ゲーム状態の取得
-    let mut game = state.game.lock().unwrap();
-    let _ = reversi_dto::put_by_ai(&mut game, depth);
+async fn put_by_ai(depth: u32, state: State<'_, AppState>) -> Result<GameStateDto, String> {
+    // AIの探索処理を別スレッド（spawn_blocking）で実行する
+    let game = state.game.clone();
+    let dto = tauri::async_runtime::spawn_blocking(move || {
+        // ゲーム状態の取得
+        let mut game = game.lock().unwrap();
+        let _ = reversi_dto::put_by_ai(&mut game, depth);
 
-    // DTOへの変換
-    Ok(GameStateDto::from(&*game))
+        // DTOへの変換
+        GameStateDto::from(&*game)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(dto)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -139,7 +147,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {
-            game: Mutex::new(GameState::new(BoardSize::Size8)),
+            game: Arc::new(Mutex::new(GameState::new(BoardSize::Size8))),
         })
         .invoke_handler(tauri::generate_handler![
             get_state, new_game, put_disc, undo, put_by_ai

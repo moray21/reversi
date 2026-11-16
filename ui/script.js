@@ -6,16 +6,45 @@ const _isTauri = Boolean(window.__TAURI__);
 
 class ReversiBackend {
     constructor() {
-        this.wasmEngine = null;
-        this.wasmModule = null;
+        this.worker = null;
+        this.msgId = 0;
+        this.pendingRequests = new Map();
+    }
+
+    // Workerにメッセージを送り、結果をPromiseで待つヘルパー
+    _sendToWorker(type, payload = {}) {
+        return new Promise((resolve, reject) => {
+            const id = ++this.msgId;
+            this.pendingRequests.set(id, { resolve, reject });
+            this.worker.postMessage({ id, type, payload });
+        });
     }
 
     async init() {
         if (!_isTauri) {
-            // Web環境の場合のみ WASM モジュールを動的インポートして初期化
-            const wasm = await import('./pkg/reversi_wasm.js');
-            await wasm.default();
-            this.wasmModule = wasm;
+            // ES Module形式のWeb Workerとして起動（pkg内のJSをimportするため必須）
+            this.worker = new Worker('./wasm-worker.js', { type: 'module' });
+
+            // Workerからの計算結果を受信して対応するPromiseを解決する
+            this.worker.onmessage = (event) => {
+                const { id, result, error } = event.data;
+                const request = this.pendingRequests.get(id);
+                if (!request) return;
+
+                this.pendingRequests.delete(id);
+                if (error) {
+                    request.reject(error);
+                } else {
+                    request.resolve(result);
+                }
+            };
+
+            this.worker.onerror = (err) => {
+                console.error("WASM Worker Error:", err);
+            };
+
+            // Worker側でWASMを初期化
+            await this._sendToWorker('init');
         }
     }
 
@@ -23,8 +52,7 @@ class ReversiBackend {
         if (_isTauri) {
             return await window.__TAURI__.core.invoke("new_game", { size });
         } else {
-            this.wasmEngine = new this.wasmModule.WasmGameEngine(size);
-            return this.wasmEngine.get_state();
+            return await this._sendToWorker('newGame', { size });
         }
     }
 
@@ -32,7 +60,7 @@ class ReversiBackend {
         if (_isTauri) {
             return await window.__TAURI__.core.invoke("put_disc", { row, col });
         } else {
-            return this.wasmEngine.put_disc(row, col);
+            return await this._sendToWorker('putDisc', { row, col });
         }
     }
 
@@ -40,7 +68,7 @@ class ReversiBackend {
         if (_isTauri) {
             return await window.__TAURI__.core.invoke("undo");
         } else {
-            return this.wasmEngine.undo();
+            return await this._sendToWorker('undo');
         }
     }
 
@@ -48,7 +76,7 @@ class ReversiBackend {
         if (_isTauri) {
             return await window.__TAURI__.core.invoke("put_by_ai", { depth });
         } else {
-            return this.wasmEngine.put_by_ai(depth);
+            return await this._sendToWorker('putByAi', { depth });
         }
     }
 }
