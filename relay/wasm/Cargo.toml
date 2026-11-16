@@ -13,3 +13,6 @@ serde-wasm-bindgen = "0.6"
 reversi = { path = "../../core" }
 reversi-dto = { path = "../dto" }
 getrandom = { version = "0.4", features = ["wasm_js"] }
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
