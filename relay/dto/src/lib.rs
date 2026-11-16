@@ -7,7 +7,7 @@
 //! # Functions
 //!
 //! * `put_by_ai` - AIにより手を進める
-use reversi::ai::{AiAgent, NegamaxAgent};
+use reversi::ai;
 use reversi::{Disc, GameState};
 use serde::{Deserialize, Serialize};
 
@@ -146,19 +146,8 @@ impl From<&GameState> for GameStateDto {
 /// assert!(res.is_err());
 /// ```
 pub fn put_by_ai(game: &mut GameState, depth: u32) -> Result<(), String> {
-    // depthが0以下の場合
-    if depth == 0 {
-        return Err("Invalid depth is specified.".into());
-    }
-
-    // ゲームが終了している場合
-    if game.is_game_over() {
-        return Err("Game is already over".into());
-    }
-
-    // AIによる手番の決定
-    let mut ai = NegamaxAgent::from_rulebased(depth);
-    let point = ai.select_hand(&*game);
+    // 決定
+    let point = ai::facade::select_hand(game, depth).map_err(|e| e.to_string())?;
 
     // Noneの場合は何もしない
     if let Some(p) = point {
