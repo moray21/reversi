@@ -124,15 +124,19 @@
                     </div>
                 </div>
 
-                <!-- AI探索深度 -->
-                <!-- <div class="space-y-2 bg-slate-900/80 p-3.5 rounded-xl border border-slate-800"> -->
+                <!-- AI思考力 -->
                 <div class="space-y-2">
                     <div class="flex justify-between items-center">
-                        <label class="text-xs font-bold text-slate-200 font-mono">AI Thingking Depth</label>
-                        <!-- <span class="text-xs font-mono text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60">Config</span> -->
+                        <label class="text-xs font-bold text-slate-200 font-mono">AI Level</label>
                     </div>
-                    <input type="number" id="ai-depth" min="1" max="16" value="12"
-                        class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500">
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="level-btn-low" onclick="setAILevel('low')"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer">弱い</button>
+                        <button id="level-btn-average" onclick="setAILevel('average')"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50 cursor-pointer">普通</button>
+                        <button id="level-btn-high" onclick="setAILevel('high')"
+                            class="px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-emerald-600 text-white shadow-md shadow-emerald-600/20 cursor-pointer">強い</button>
+                    </div>
                 </div>
             </div>
 

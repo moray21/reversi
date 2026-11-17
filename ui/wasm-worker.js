@@ -31,7 +31,7 @@ self.onmessage = async (event) => {
 
             case 'putByAi':
                 if (!engine) throw new Error("Engine not initialized");
-                result = engine.put_by_ai(payload.depth);
+                result = engine.put_by_ai(payload.level);
                 break;
 
             default:
