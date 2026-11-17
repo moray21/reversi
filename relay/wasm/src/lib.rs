@@ -3,8 +3,7 @@
 /// # Structs
 ///
 /// * `WasmGameEngine` - ゲームの状態
-use reversi::{BoardSize, GameState, Point};
-use reversi_dto::GameStateDto;
+use reversi::{BoardSize, GameState, GameStateDto, Point, ai};
 use wasm_bindgen::prelude::*;
 
 /// WASMから操作できるゲーム
@@ -93,7 +92,20 @@ impl WasmGameEngine {
     ///
     /// * `Result<JsValue, JsValue>`
     pub fn put_by_ai(&mut self, depth: u32) -> Result<JsValue, JsValue> {
-        let _ = reversi_dto::put_by_ai(&mut self.state, depth);
+        // depthが0以下の場合
+        if depth == 0 {
+            return Err("Invalid depth is specified.".into());
+        }
+
+        // 決定
+        let level = "average".parse::<ai::facade::IntelligenceLevel>().unwrap();
+        let point = ai::facade::select_hand(&mut self.state, level).map_err(|e| e.to_string())?;
+
+        // Noneの場合は何もしない
+        if let Some(p) = point {
+            self.state.put_disc(p).map_err(|e| e.to_string())?;
+        }
+
         let dto = GameStateDto::from(&self.state);
         Ok(serde_wasm_bindgen::to_value(&dto)?)
     }

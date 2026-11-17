@@ -11,7 +11,6 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 reversi = { path = "../../core" }
-reversi-dto = { path = "../dto" }
 tokio = { version = "1.0", features = ["full"] }
 
 [build-dependencies]
