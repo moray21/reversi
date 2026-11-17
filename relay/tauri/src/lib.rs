@@ -117,19 +117,14 @@ fn undo(state: State<'_, AppState>) -> Result<GameStateDto, String> {
 ///
 /// # Arguments
 ///
-/// * `depth` - 探索の深さ
+/// * `level` - AIの思考力
 /// * `state` - AppStateの参照
 ///
 /// # Returns
 ///
 /// * `GameStateDto`
 #[tauri::command]
-async fn put_by_ai(depth: u32, state: State<'_, AppState>) -> Result<GameStateDto, String> {
-    // depthが0以下の場合
-    if depth == 0 {
-        return Err("Invalid depth is specified.".into());
-    }
-
+async fn put_by_ai(level: String, state: State<'_, AppState>) -> Result<GameStateDto, String> {
     // AIの探索処理を別スレッド（spawn_blocking）で実行する
     let game = state.game.clone();
     let dto = tauri::async_runtime::spawn_blocking(move || {
@@ -137,7 +132,7 @@ async fn put_by_ai(depth: u32, state: State<'_, AppState>) -> Result<GameStateDt
         let mut game = game.lock().unwrap();
 
         // 決定
-        let level = "average".parse::<ai::facade::IntelligenceLevel>().unwrap();
+        let level = level.parse::<ai::facade::IntelligenceLevel>().unwrap();
         let point = ai::facade::select_hand(&mut game, level).unwrap();
 
         // Noneの場合は何もしない

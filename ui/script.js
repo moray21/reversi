@@ -72,11 +72,11 @@ class ReversiBackend {
         }
     }
 
-    async putByAi(depth) {
+    async putByAi(level) {
         if (_isTauri) {
-            return await window.__TAURI__.core.invoke("put_by_ai", { depth });
+            return await window.__TAURI__.core.invoke("put_by_ai", { level });
         } else {
-            return await this._sendToWorker('putByAi', { depth });
+            return await this._sendToWorker('putByAi', { level });
         }
     }
 }
@@ -368,10 +368,11 @@ async function executeSingleAiMove() {
     await waitNextPaint(50);
 
     const depth = parseInt(document.getElementById("ai-depth")?.value) || 4;
+    const level = "high";
     const minThinkMs = 500;
     const startTime = performance.now();
 
-    const res = await backend.putByAi(depth);
+    const res = await backend.putByAi(level);
 
     const elapsed = performance.now() - startTime;
     if (elapsed < minThinkMs) {

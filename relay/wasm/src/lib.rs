@@ -86,19 +86,14 @@ impl WasmGameEngine {
     ///
     /// # Arguments
     ///
-    /// * `depth` - 探索の深さ
+    /// * `level` - AIの思考力
     ///
     /// # Return
     ///
     /// * `Result<JsValue, JsValue>`
-    pub fn put_by_ai(&mut self, depth: u32) -> Result<JsValue, JsValue> {
-        // depthが0以下の場合
-        if depth == 0 {
-            return Err("Invalid depth is specified.".into());
-        }
-
+    pub fn put_by_ai(&mut self, level: &str) -> Result<JsValue, JsValue> {
         // 決定
-        let level = "average".parse::<ai::facade::IntelligenceLevel>().unwrap();
+        let level = level.parse::<ai::facade::IntelligenceLevel>().unwrap();
         let point = ai::facade::select_hand(&mut self.state, level).map_err(|e| e.to_string())?;
 
         // Noneの場合は何もしない
