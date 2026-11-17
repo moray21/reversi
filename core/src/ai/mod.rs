@@ -1,5 +1,11 @@
 //! AIの思考ルーチン、評価関数、およびプレイヤーを管理するモジュール
 //!
+//! # Modules
+//!
+//! * `agent` - AIエージェントの定義
+//! * `evaluator` - 盤面を評価する機能
+//! * `facade` - AI関係のファサード処理
+//!
 //! # Traits
 //!
 //! * `AiAgent` - AIエージェントのトレイト
@@ -12,5 +18,6 @@
 
 pub mod agent;
 pub mod evaluator;
+pub mod facade;
 pub use agent::{AiAgent, NegamaxAgent, RandomAgent};
 pub use evaluator::RuleBaseEvaluator;

@@ -7,8 +7,7 @@
 //! * `undo` - 1手戻る
 //! * `put_by_ai` - AIに打たせる
 
-use reversi::{BoardSize, GameState, Point};
-use reversi_dto::GameStateDto;
+use reversi::{BoardSize, GameState, GameStateDto, Point, ai};
 use std::sync::{Arc, Mutex};
 use tauri::State;
 
@@ -118,20 +117,28 @@ fn undo(state: State<'_, AppState>) -> Result<GameStateDto, String> {
 ///
 /// # Arguments
 ///
-/// * `depth` - 探索の深さ
+/// * `level` - AIの思考力
 /// * `state` - AppStateの参照
 ///
 /// # Returns
 ///
 /// * `GameStateDto`
 #[tauri::command]
-async fn put_by_ai(depth: u32, state: State<'_, AppState>) -> Result<GameStateDto, String> {
+async fn put_by_ai(level: String, state: State<'_, AppState>) -> Result<GameStateDto, String> {
     // AIの探索処理を別スレッド（spawn_blocking）で実行する
     let game = state.game.clone();
     let dto = tauri::async_runtime::spawn_blocking(move || {
         // ゲーム状態の取得
         let mut game = game.lock().unwrap();
-        let _ = reversi_dto::put_by_ai(&mut game, depth);
+
+        // 決定
+        let level = level.parse::<ai::facade::IntelligenceLevel>().unwrap();
+        let point = ai::facade::select_hand(&mut game, level).unwrap();
+
+        // Noneの場合は何もしない
+        if let Some(p) = point {
+            game.put_disc(p).unwrap();
+        }
 
         // DTOへの変換
         GameStateDto::from(&*game)

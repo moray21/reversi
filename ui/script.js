@@ -72,11 +72,11 @@ class ReversiBackend {
         }
     }
 
-    async putByAi(depth) {
+    async putByAi(level) {
         if (_isTauri) {
-            return await window.__TAURI__.core.invoke("put_by_ai", { depth });
+            return await window.__TAURI__.core.invoke("put_by_ai", { level });
         } else {
-            return await this._sendToWorker('putByAi', { depth });
+            return await this._sendToWorker('putByAi', { level });
         }
     }
 }
@@ -90,6 +90,7 @@ let turn = 1;  // 1: 黒 (先手), -1: 白 (後手)
 let messageTimer = null;
 let isAiThinking = false;
 let isGameOver = false;
+let aiLevel = "high";
 
 let prevBoard = null;
 let lastMove = null; // [row, col]
@@ -181,6 +182,19 @@ function setBoardSize(size) {
     });
     newGame(size);
     toggleSettingsMenu();
+}
+
+function setAILevel(level) {
+    ["low", "average", "high"].forEach(s => {
+        const btn = document.getElementById(`level-btn-${s}`);
+        if (!btn) return;
+        if (s === level) {
+            btn.className = "px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-emerald-600 text-white shadow-md shadow-emerald-600/20";
+        } else {
+            btn.className = "px-3 py-2 rounded-xl text-xs font-mono font-bold transition bg-slate-900 border border-slate-800 text-slate-300 hover:border-cyan-500/50";
+        }
+    });
+    aiLevel = level;
 }
 
 function setAiThinkingUI(thinking) {
@@ -367,11 +381,10 @@ async function executeSingleAiMove() {
 
     await waitNextPaint(50);
 
-    const depth = parseInt(document.getElementById("ai-depth")?.value) || 4;
     const minThinkMs = 500;
     const startTime = performance.now();
 
-    const res = await backend.putByAi(depth);
+    const res = await backend.putByAi(aiLevel);
 
     const elapsed = performance.now() - startTime;
     if (elapsed < minThinkMs) {
@@ -585,3 +598,4 @@ window.toggleSettingsMenu = toggleSettingsMenu;
 window.setGameMode = setGameMode;
 window.setPlayerColor = setPlayerColor;
 window.setBoardSize = setBoardSize;
+window.setAILevel = setAILevel;
