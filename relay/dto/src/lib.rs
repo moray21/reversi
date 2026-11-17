@@ -146,8 +146,14 @@ impl From<&GameState> for GameStateDto {
 /// assert!(res.is_err());
 /// ```
 pub fn put_by_ai(game: &mut GameState, depth: u32) -> Result<(), String> {
+    // depthが0以下の場合
+    if depth == 0 {
+        return Err("Invalid depth is specified.".into());
+    }
+
     // 決定
-    let point = ai::facade::select_hand(game, depth).map_err(|e| e.to_string())?;
+    let level = "average".parse::<ai::facade::IntelligenceLevel>().unwrap();
+    let point = ai::facade::select_hand(game, level).map_err(|e| e.to_string())?;
 
     // Noneの場合は何もしない
     if let Some(p) = point {
