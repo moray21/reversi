@@ -37,6 +37,37 @@ pub struct GameState {
     history: Vec<GameSnapshot>,
 }
 
+impl From<&GameSnapshot> for GameState {
+    /// スナップショットから新しいゲーム状態を作成する（履歴は空）
+    ///
+    /// # Arguments
+    ///
+    /// * `snapshot` - 復元元のスナップショット
+    ///
+    /// # Returns
+    ///
+    /// * `GameState` - 履歴が空の新しいゲーム状態
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{GameState, BoardSize, Point};
+    /// let mut state = GameState::new(BoardSize::Size8);
+    /// state.put_disc(Point::new(2, 3)).unwrap();
+    /// let snapshot = state.get_snapshot_at(0).unwrap();
+    /// let restored = GameState::from(&snapshot);
+    /// assert_eq!(restored.turn, reversi::Disc::Black);
+    /// ```
+    fn from(snapshot: &GameSnapshot) -> Self {
+        Self {
+            board: snapshot.board.clone(),
+            turn: snapshot.turn,
+            consecutive_passes: snapshot.consecutive_passes,
+            history: Vec::new(),
+        }
+    }
+}
+
 impl GameState {
     /// 指定したサイズで新しいゲーム状態を作成する
     ///
