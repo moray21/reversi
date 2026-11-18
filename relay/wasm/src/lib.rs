@@ -3,17 +3,17 @@
 /// # Structs
 ///
 /// * `WasmGameEngine` - ゲームの状態
-use reversi::{BoardSize, GameState, GameStateDto, Point, ai};
+use reversi::{BoardSize, GameSession, Point, ai};
 use wasm_bindgen::prelude::*;
 
 /// WASMから操作できるゲーム
 ///
 /// # Arguments
 ///
-/// * `state` - ゲームの状態
+/// * `session` - ゲームセッション
 #[wasm_bindgen]
 pub struct WasmGameEngine {
-    state: GameState,
+    session: GameSession,
 }
 
 #[wasm_bindgen]
@@ -36,7 +36,7 @@ impl WasmGameEngine {
             _ => return Err(JsValue::from_str("Invalid board size")),
         };
         Ok(Self {
-            state: GameState::new(board_size),
+            session: GameSession::new(board_size),
         })
     }
 
@@ -46,7 +46,7 @@ impl WasmGameEngine {
     ///
     /// * `Result<JsValue, JsValue>`
     pub fn get_state(&self) -> Result<JsValue, JsValue> {
-        let dto = GameStateDto::from(&self.state);
+        let dto = self.session.get_state();
         Ok(serde_wasm_bindgen::to_value(&dto)?)
     }
 
@@ -61,10 +61,10 @@ impl WasmGameEngine {
     ///
     /// * `Result<JsValue, JsValue>`
     pub fn put_disc(&mut self, row: usize, col: usize) -> Result<JsValue, JsValue> {
-        self.state
+        let dto = self
+            .session
             .put_disc(Point::new(row, col))
             .map_err(JsValue::from_str)?;
-        let dto = GameStateDto::from(&self.state);
         Ok(serde_wasm_bindgen::to_value(&dto)?)
     }
 
@@ -74,12 +74,8 @@ impl WasmGameEngine {
     ///
     /// * `Result<JsValue, JsValue>`
     pub fn undo(&mut self) -> Result<JsValue, JsValue> {
-        if self.state.undo() {
-            let dto = GameStateDto::from(&self.state);
-            Ok(serde_wasm_bindgen::to_value(&dto)?)
-        } else {
-            Err(JsValue::from_str("Failed to undo"))
-        }
+        let dto = self.session.undo().map_err(JsValue::from_str)?;
+        Ok(serde_wasm_bindgen::to_value(&dto)?)
     }
 
     /// AIに打たせる
@@ -92,16 +88,49 @@ impl WasmGameEngine {
     ///
     /// * `Result<JsValue, JsValue>`
     pub fn put_by_ai(&mut self, level: &str) -> Result<JsValue, JsValue> {
-        // 決定
         let level = level.parse::<ai::facade::IntelligenceLevel>().unwrap();
-        let point = ai::facade::select_hand(&mut self.state, level).map_err(|e| e.to_string())?;
+        let point = ai::facade::select_hand(&mut self.session.main_state, level)
+            .map_err(|e| e.to_string())?;
 
-        // Noneの場合は何もしない
         if let Some(p) = point {
-            self.state.put_disc(p).map_err(|e| e.to_string())?;
+            let _ = self.session.put_disc(p);
         }
 
-        let dto = GameStateDto::from(&self.state);
+        let dto = self.session.get_state();
         Ok(serde_wasm_bindgen::to_value(&dto)?)
+    }
+
+    /// 全局面の履歴DTOリストを取得する
+    ///
+    /// # Returns
+    ///
+    /// * `Result<JsValue, JsValue>`
+    pub fn get_history(&self) -> Result<JsValue, JsValue> {
+        let history = self.session.get_history();
+        Ok(serde_wasm_bindgen::to_value(&history)?)
+    }
+
+    /// 指定した手数の盤面から分岐対局を開始する
+    ///
+    /// # Arguments
+    ///
+    /// * `step` - 分岐元の手数
+    ///
+    /// # Returns
+    ///
+    /// * `Result<JsValue, JsValue>`
+    pub fn fork_at(&mut self, step: usize) -> Result<JsValue, JsValue> {
+        let dto = self.session.fork_at(step).map_err(JsValue::from_str)?;
+        Ok(serde_wasm_bindgen::to_value(&dto)?)
+    }
+
+    /// 分岐を破棄して本譜の分岐元盤面に復帰する
+    ///
+    /// # Returns
+    ///
+    /// * `Result<JsValue, JsValue>`
+    pub fn reset_to_main(&mut self) -> Result<JsValue, JsValue> {
+        let step = self.session.reset_to_main().map_err(JsValue::from_str)?;
+        Ok(serde_wasm_bindgen::to_value(&step)?)
     }
 }
