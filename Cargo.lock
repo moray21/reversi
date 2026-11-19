@@ -2986,7 +2986,7 @@ dependencies = [
 
 [[package]]
 name = "reversi"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "ndarray",
  "rand",
@@ -2995,7 +2995,7 @@ dependencies = [
 
 [[package]]
 name = "reversi-tauri"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "reversi",
  "tauri",
@@ -3007,7 +3007,7 @@ dependencies = [
 
 [[package]]
 name = "reversi-wasm"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "getrandom 0.4.3",
  "reversi",
