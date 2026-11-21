@@ -163,7 +163,7 @@ export function useReversi() {
         setFlippingDiscs(flipMap);
         setGameState(nextState);
 
-        await new Promise((r) => setTimeout(r, 250));
+        await new Promise((r) => setTimeout(r, 550));
         setFlippingDiscs(new Map());
         setIsAnimatingMove(false);
       } else {

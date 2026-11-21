@@ -42,34 +42,76 @@ body {
   }
 }
 
-/* ジャンプしながらY軸回転して裏返る軌道 */
-@keyframes jumpFlipMotion {
+/* ジャンプ＆拡大縮小（外枠） */
+@keyframes jumpArcMotion {
   0% {
-    transform: perspective(400px) translateY(0px) scale(1) rotateY(0deg);
+    transform: translateY(0px) scale(1);
   }
 
   15% {
-    transform: perspective(400px) translateY(1px) scale(1) rotateY(5deg);
+    transform: translateY(1px) scale(1);
   }
 
   45% {
-    transform: perspective(400px) translateY(-25px) scale(1.16) rotateY(85deg);
+    transform: translateY(-25px) scale(1.16);
   }
 
   50% {
-    transform: perspective(400px) translateY(-35px) scale(1.18) rotateY(90deg);
+    transform: translateY(-35px) scale(1.18);
   }
 
   55% {
-    transform: perspective(400px) translateY(-25px) scale(1.16) rotateY(95deg);
+    transform: translateY(-25px) scale(1.16);
   }
 
   85% {
-    transform: perspective(400px) translateY(1px) scale(0.97) rotateY(175deg);
+    transform: translateY(1px) scale(0.97);
   }
 
   100% {
-    transform: perspective(400px) translateY(0px) scale(1) rotateY(180deg);
+    transform: translateY(0px) scale(1);
+  }
+}
+
+/* 盤面上で時計まわりに1回転 */
+@keyframes spinClockwiseMotion {
+  0% {
+    transform: rotateZ(0deg);
+  }
+
+  100% {
+    transform: rotateZ(-90deg);
+  }
+}
+
+/* Y軸回転して裏返る軌道 */
+@keyframes jumpFlipMotion {
+  0% {
+    transform: rotateY(0deg);
+  }
+
+  15% {
+    transform: rotateY(5deg);
+  }
+
+  45% {
+    transform: rotateY(85deg);
+  }
+
+  50% {
+    transform: rotateY(90deg);
+  }
+
+  55% {
+    transform: rotateY(95deg);
+  }
+
+  85% {
+    transform: rotateY(175deg);
+  }
+
+  100% {
+    transform: rotateY(180deg);
   }
 }
 
@@ -103,6 +145,16 @@ body {
 
 .animate-place-disc {
   animation: placeDiscPop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-jump-arc {
+  perspective: 400px;
+  animation: jumpArcMotion 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-spin-cw {
+  transform-style: preserve-3d;
+  animation: spinClockwiseMotion 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-jump-flip {

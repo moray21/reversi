@@ -17,7 +17,7 @@ interface BoardProps {
   onCellClick: (row: number, col: number) => void;
 }
 
-/** 黒石と白いしのスタイル */
+/** 黒石と白石のスタイル */
 const blackDiscClass =
   'rounded-full bg-gradient-to-br from-slate-700 via-slate-900 to-black shadow-lg border border-slate-700/50';
 const whiteDiscClass =
@@ -43,7 +43,7 @@ export function Board({
   return (
     <div className="bg-slate-950/90 border-2 border-slate-800 rounded-2xl p-3 shadow-2xl w-full aspect-square flex items-center justify-center">
       <div
-        className="grid gap-1.5 w-full h-full aspect-square"
+        className="grid gap-1.5 w-full h-full aspect-square perspective-board"
         style={{
           gridTemplateColumns: `repeat(${gameState.size}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${gameState.size}, minmax(0, 1fr))`,
@@ -71,17 +71,23 @@ export function Board({
               >
                 {/* 反転アニメーション中の石 */}
                 {flipInfo ? (
-                  <div className="w-[82%] h-[82%] relative animate-jump-flip">
-                    <div
-                      className={`absolute inset-0 flip-front-face ${flipInfo.fromColor === 1
-                        ? blackDiscClass
-                        : whiteDiscClass
-                        }`}
-                    />
-                    <div
-                      className={`absolute inset-0 flip-back-face ${flipInfo.toColor === 1 ? blackDiscClass : whiteDiscClass
-                        }`}
-                    />
+                  <div className="w-[82%] h-[82%] relative animate-jump-arc">
+                    <div className="w-full h-full animate-spin-cw">
+                      <div className="w-full h-full relative animate-jump-flip">
+                        <div
+                          className={`absolute inset-0 flip-front-face ${flipInfo.fromColor === 1
+                            ? blackDiscClass
+                            : whiteDiscClass
+                            }`}
+                        />
+                        <div
+                          className={`absolute inset-0 flip-back-face ${flipInfo.toColor === 1
+                            ? blackDiscClass
+                            : whiteDiscClass
+                            }`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <>
