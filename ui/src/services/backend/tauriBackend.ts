@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import type { BoardSize, AILevel, GameStateDto } from '../../types/reversi';
 import type { IReversiBackend } from './types';
 
@@ -13,7 +14,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns 新しいゲームの状態
    */
   async newGame(size: BoardSize): Promise<GameStateDto> {
-    return await window.__TAURI__!.core.invoke<GameStateDto>('new_game', { size });
+    return await invoke<GameStateDto>('new_game', { size });
   }
 
   /**
@@ -24,7 +25,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns ゲームの状態
    */
   async putDisc(row: number, col: number): Promise<GameStateDto> {
-    return await window.__TAURI__!.core.invoke<GameStateDto>('put_disc', { row, col });
+    return await invoke<GameStateDto>('put_disc', { row, col });
   }
 
   /**
@@ -33,7 +34,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns ゲームの状態
    */
   async undo(): Promise<GameStateDto> {
-    return await window.__TAURI__!.core.invoke<GameStateDto>('undo');
+    return await invoke<GameStateDto>('undo');
   }
 
   /**
@@ -43,7 +44,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns ゲームの状態
    */
   async putByAi(level: AILevel): Promise<GameStateDto> {
-    return await window.__TAURI__!.core.invoke<GameStateDto>('put_by_ai', { level });
+    return await invoke<GameStateDto>('put_by_ai', { level });
   }
 
   /**
@@ -52,7 +53,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns 盤面のリスト
    */
   async getHistory(): Promise<GameStateDto[]> {
-    return await window.__TAURI__!.core.invoke<GameStateDto[]>('get_history');
+    return await invoke<GameStateDto[]>('get_history');
   }
 
   /**
@@ -62,7 +63,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns ゲームの状況
    */
   async forkAt(step: number): Promise<GameStateDto> {
-    return await window.__TAURI__!.core.invoke<GameStateDto>('fork_at', { step });
+    return await invoke<GameStateDto>('fork_at', { step });
   }
 
   /**
@@ -71,7 +72,7 @@ export class TauriBackend implements IReversiBackend {
    * @returns 分岐時点の盤面の番号
    */
   async resetToMain(): Promise<number> {
-    return await window.__TAURI__!.core.invoke<number>('reset_to_main');
+    return await invoke<number>('reset_to_main');
   }
 
   /** リソース解放 */
