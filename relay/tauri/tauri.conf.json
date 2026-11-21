@@ -4,10 +4,9 @@
     "version": "0.1.2",
     "identifier": "com.game.reversi",
     "build": {
-        "frontendDist": "../../ui"
+        "frontendDist": "../../ui/dist"
     },
     "app": {
-        "withGlobalTauri": true,
         "windows": [
             {
                 "title": "Reversi",

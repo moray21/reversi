@@ -34,6 +34,21 @@ self.onmessage = async (event) => {
                 result = engine.put_by_ai(payload.level);
                 break;
 
+            case 'getHistory':
+                if (!engine) throw new Error("Engine not initialized");
+                result = engine.get_history();
+                break;
+
+            case 'forkAt':
+                if (!engine) throw new Error("Engine not initialized");
+                result = engine.fork_at(payload.step);
+                break;
+
+            case 'resetToMain':
+                if (!engine) throw new Error("Engine not initialized");
+                result = engine.reset_to_main();
+                break;
+
             default:
                 throw new Error(`Unknown command type: ${type}`);
         }
