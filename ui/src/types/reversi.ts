@@ -12,6 +12,9 @@ export type DiscColor = 1 | -1;
 /** AIの強さレベル ('low': 初級, 'average': 中級, 'high': 上級) */
 export type AILevel = 'low' | 'average' | 'high';
 
+/** アプリケーションの画面遷移状態 ('start': 開始設定画面, 'game': 対局画面, 'review': 感想戦画面) */
+export type AppScreen = 'start' | 'game' | 'review';
+
 /** Rust側から受け取るゲーム状態のDTO */
 export interface GameStateDto {
   /** 盤面のサイズ */
