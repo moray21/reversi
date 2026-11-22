@@ -46,7 +46,7 @@ export function StartScreen({
   return (
     <main className="flex-1 max-w-xl w-full mx-auto p-4 flex flex-col justify-center items-center">
       {/* メイン設定カード */}
-      <div className="glass-panel-glow rounded-3xl px-6 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-6 w-full space-y-6 border border-cyan-500/20 shadow-2xl relative overflow-hidden animate-fade-in">
+      <div className="rounded-3xl px-6 pb-6 pt-2 sm:px-8 sm:pb-4 sm:pt-2 w-full space-y-6 relative overflow-hidden animate-fade-in">
         {/* カードヘッダー */}
         <div className="text-center flex items-center space-x-3 justify-center pb-2 border-b border-slate-800">
           <div className="inline-flex items-center justify-center p-2 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 mb-2">
