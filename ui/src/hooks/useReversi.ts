@@ -321,7 +321,7 @@ export function useReversi() {
 
     try {
       let res = await backend.undo();
-      if (gameMode === 'pve') {
+      if ((gameMode === 'pve') && res.consecutive_passes != 1) {
         try {
           const res2 = await backend.undo();
           if (res2) res = res2;
