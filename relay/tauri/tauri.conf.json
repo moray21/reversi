@@ -10,7 +10,7 @@
         "windows": [
             {
                 "title": "Reversi",
-                "width": 800,
+                "width": 524,
                 "height": 900
             }
         ],
