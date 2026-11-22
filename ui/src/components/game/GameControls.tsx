@@ -1,4 +1,4 @@
-import { CornerUpLeft, Bot } from 'lucide-react';
+import { CornerUpLeft, Sparkles } from 'lucide-react';
 
 /**
  * 対局操作コントロールのプロパティ
@@ -49,10 +49,10 @@ export function GameControls({
         disabled={isDisabled || isGameOver}
         onClick={onManualAiMove}
         style={{ opacity: isDisabled || isGameOver ? 0.5 : 1 }}
-        className="flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/20 transition-all cursor-pointer disabled:cursor-not-allowed"
+        className="flex items-center justify-center space-x-1.5 py-2.5 rounded-xl bg-slate-900 border border-purple-500/40 hover:border-purple-400 text-purple-300 hover:text-white font-medium text-xs transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
       >
-        <Bot className="w-4 h-4" />
-        <span>Let AI Play</span>
+        <Sparkles className="w-4 h-4" />
+        <span>AI着手</span>
       </button>
     </div>
   );

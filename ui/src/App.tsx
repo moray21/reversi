@@ -8,6 +8,7 @@ import { PassOverlay } from './components/common/PassOverlay';
 import { GameOverModal } from './components/common/GameOverModal';
 import { StartScreen } from './components/start/StartScreen';
 import { GameScreen } from './components/game/GameScreen';
+import { ReviewScreen } from './components/review/ReviewScreen';
 
 /**
  * リバーシアプリケーションのメインコンポーネント
@@ -29,6 +30,12 @@ export default function App() {
     message,
     passInfo,
     showGameOver,
+    historyList,
+    reviewStep,
+    isForked,
+    forkedStep,
+    currentReviewGameState,
+    currentReviewLastMove,
     setCurrentSize,
     setGameMode,
     setPlayerColor,
@@ -38,6 +45,12 @@ export default function App() {
     handleCellClick,
     handleUndo,
     handleManualAiMove,
+    enterReviewMode,
+    goToReviewStep,
+    handleReviewCellClick,
+    handleReviewAiMove,
+    handleReviewUndo,
+    handleResetToReview,
   } = useReversi();
 
   /** 開始画面から対局を開始する */
@@ -50,6 +63,19 @@ export default function App() {
   const handleBackToStart = () => {
     setShowGameOver(false);
     setCurrentScreen('start');
+  };
+
+  /** 終局モーダルから感想戦へ進む */
+  const handleGoToReview = async () => {
+    await enterReviewMode();
+    setCurrentScreen('review');
+  };
+
+  /** もう一度対局を開始する */
+  const handlePlayAgain = async () => {
+    setShowGameOver(false);
+    await startNewGame(currentSize);
+    setCurrentScreen('game');
   };
 
   return (
@@ -98,14 +124,35 @@ export default function App() {
         />
       )}
 
-      {/* 終局モーダル */}
+      {/* 感想戦画面 */}
+      {currentScreen === 'review' && (
+        <ReviewScreen
+          reviewGameState={currentReviewGameState}
+          historyLength={historyList.length}
+          reviewStep={reviewStep}
+          isForked={isForked}
+          forkedStep={forkedStep}
+          isAiThinking={isAiThinking}
+          isAnimatingMove={isAnimatingMove}
+          lastMove={currentReviewLastMove}
+          flippingDiscs={flippingDiscs}
+          message={message}
+          onCellClick={handleReviewCellClick}
+          onStepChange={goToReviewStep}
+          onAiMove={handleReviewAiMove}
+          onUndo={handleReviewUndo}
+          onResetToReview={handleResetToReview}
+          onBackToStart={handleBackToStart}
+          onPlayAgain={handlePlayAgain}
+        />
+      )}
+
+      {/* 終局モーダル（対局画面中のみ表示） */}
       <GameOverModal
-        show={showGameOver}
+        show={showGameOver && currentScreen === 'game'}
         gameState={gameState}
-        onPlayAgain={() => {
-          setShowGameOver(false);
-          startNewGame(currentSize);
-        }}
+        onPlayAgain={handlePlayAgain}
+        onGoToReview={handleGoToReview}
         onBackToStart={handleBackToStart}
       />
     </div>

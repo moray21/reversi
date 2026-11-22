@@ -1,3 +1,4 @@
+import { Grid } from 'lucide-react';
 import type {
   GameStateDto,
   GameMode,
@@ -7,6 +8,7 @@ import type {
 import { ScoreBoard } from './ScoreBoard';
 import { Board } from './Board';
 import { GameControls } from './GameControls';
+import { showMessage } from './message';
 
 /**
  * 対局画面のプロパティ
@@ -63,7 +65,43 @@ export function GameScreen({
 
   return (
     <main className="flex-1 max-w-4xl w-full mx-auto p-2 md:p-2 items-center">
-      <div className="glass-panel rounded-2xl p-3 relative overflow-hidden space-y-2">
+      <div className="rounded-2xl p-3 relative overflow-hidden space-y-2">
+        {/* header */}
+        <div className="w-full flex items-center justify-between mb-3 px-1">
+          <div className="text-xs font-mono text-slate-400 flex items-center space-x-2">
+            <Grid className="w-4 h-4 text-cyan-400" />
+            <span>Game</span>
+          </div>
+
+          {/* 手番インジケーター */}
+          {isAiThinking ? (
+            <div className="flex items-center space-x-2 bg-purple-950/90 px-3 py-1 rounded-full border border-purple-400 font-mono text-xs shadow-lg shadow-purple-500/30 animate-pulse">
+              <div className="w-3.5 h-3.5 rounded-full bg-purple-400 animate-ping" />
+              <span className="font-bold text-purple-200 text-[11px]">
+                AI ({gameState.turn === 1 ? '黒' : '白'}) 思考中...
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2 bg-slate-900/90 px-3 py-1 rounded-full border border-slate-800 font-mono text-xs shadow-inner">
+              <div
+                className={`w-2.5 h-2 rounded-full ${gameState.turn === 1
+                  ? 'bg-black border border-slate-600'
+                  : 'bg-white border border-slate-400'
+                  }`}
+              />
+              <span className="font-bold text-white text-[11px]">
+                {gameState.turn === 1
+                  ? gameMode === 'pve' && playerColor === 1
+                    ? '黒の手番 (あなた)'
+                    : '黒の手番'
+                  : gameMode === 'pve' && playerColor === -1
+                    ? '白の手番 (あなた)'
+                    : '白の手番'}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* スコア・手番カード */}
         <ScoreBoard
           gameState={gameState}
@@ -91,12 +129,8 @@ export function GameScreen({
         />
       </div>
 
-      {/* ステータスメッセージ */}
-      {message && (
-        <div className="glass-panel rounded-xl p-3 text-xs font-mono text-cyan-300 text-center border border-cyan-500/20 animate-fade-in mt-2">
-          {message}
-        </div>
-      )}
+      {/* メッセージトースト */}
+      {message && showMessage(message)}
     </main>
   );
 }
