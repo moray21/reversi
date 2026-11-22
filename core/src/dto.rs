@@ -3,8 +3,9 @@
 //! # Structs
 //!
 //! * `GameStateDto` - フロントエンドに返すゲーム状態のDTO
+//! * `ResetResultDto` - 分岐から本譜復帰時の結果DTO
 use crate::board::Disc;
-use crate::state::GameState;
+use crate::state::{GameSnapshot, GameState};
 use serde::{Deserialize, Serialize};
 
 /// フロントエンドに返すゲーム状態のDTO(Data Transfer Object：データ転送オブジェクト)
@@ -20,7 +21,7 @@ use serde::{Deserialize, Serialize};
 /// * `winner` - 勝者 (Some(1): 黒, Some(-1): 白, Some(0): 引き分け, None: ゲーム中)
 /// * `legal_points` - 打てる場所のリスト ((行, 列)のタプル)
 /// * `consecutive_passes` - パスが連続した回数
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct GameStateDto {
     pub size: usize,
     pub board: Vec<Vec<i8>>,
@@ -101,5 +102,64 @@ impl From<&GameState> for GameStateDto {
                 .collect(),
             consecutive_passes: state.consecutive_passes,
         }
+    }
+}
+
+impl From<&GameSnapshot> for GameStateDto {
+    /// GameSnapshotからGameStateDtoに変換する
+    ///
+    /// # Arguments
+    ///
+    /// * `snapshot` - GameSnapshotの参照
+    ///
+    /// # Returns
+    ///
+    /// * `GameStateDto`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{BoardSize, GameSnapshot, GameState, GameStateDto, Point};
+    /// let mut state = GameState::new(BoardSize::Size8);
+    /// state.put_disc(Point::new(2, 3)).unwrap();
+    /// let snapshot = state.get_snapshot_at(0).unwrap();
+    /// let dto = GameStateDto::from(&snapshot);
+    /// assert_eq!(dto.size, 8);
+    /// ```
+    fn from(snapshot: &GameSnapshot) -> Self {
+        let state = GameState::from(snapshot);
+        Self::from(&state)
+    }
+}
+
+impl GameStateDto {
+    /// GameStateの全履歴からGameStateDtoのリストを生成する
+    ///
+    /// # Arguments
+    ///
+    /// * `state` - GameStateの参照
+    ///
+    /// # Returns
+    ///
+    /// * `Vec<GameStateDto>` - 初手から現在手までのGameStateDtoのリスト
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{BoardSize, GameState, GameStateDto, Point};
+    /// let mut state = GameState::new(BoardSize::Size8);
+    /// assert_eq!(GameStateDto::from_state_history(&state).len(), 1);
+    /// state.put_disc(Point::new(2, 3)).unwrap();
+    /// assert_eq!(GameStateDto::from_state_history(&state).len(), 2);
+    /// ```
+    pub fn from_state_history(state: &GameState) -> Vec<Self> {
+        let mut dtos = Vec::with_capacity(state.history_len() + 1);
+        for i in 0..state.history_len() {
+            if let Some(snapshot) = state.get_snapshot_at(i) {
+                dtos.push(Self::from(&snapshot));
+            }
+        }
+        dtos.push(Self::from(state));
+        dtos
     }
 }
