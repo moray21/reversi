@@ -404,6 +404,24 @@ impl Board {
         self.empty().count_ones() as u8
     }
 
+    /// 黒と白の盤面を結合して1つのu128で返す
+    ///
+    /// # Returns
+    ///
+    /// * `u128` - 前半64ビットが黒、後半64ビットが白
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize};
+    /// let board = Board::new(BoardSize::Size8, 1, 2);
+    /// let value = board.to_hashable();
+    /// assert_eq!(value, 0x0000_0000_0000_0001_0000_0000_0000_0002);
+    /// ```
+    pub fn to_hashable(&self) -> u128 {
+        ((self.black as u128) << 64) | (self.white as u128)
+    }
+
     /// 黒石の座標のリストを返す
     ///
     /// # Returns
