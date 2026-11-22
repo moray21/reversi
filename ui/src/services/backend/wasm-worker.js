@@ -1,6 +1,32 @@
-import init, { WasmGameEngine } from './pkg/reversi_wasm.js';
-
+let WasmGameEngine = null;
 let engine = null;
+
+
+async function loadWasmGameEngine(baseUrl) {
+    const scriptUrl = `${baseUrl}pkg/reversi_wasm.js`;
+    const wasmUrl = `${baseUrl}pkg/reversi_wasm_bg.wasm`;
+
+    const response = await fetch(scriptUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch ${scriptUrl}: ${response.status} ${response.statusText}`);
+    }
+
+    const code = await response.text();
+    const resolvedScriptUrl = new URL(scriptUrl, self.location.origin).href;
+    const codeWithSourceUrl = `${code}\n//# sourceURL=${resolvedScriptUrl}`;
+
+    const blob = new Blob([codeWithSourceUrl], { type: 'application/javascript' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    try {
+        const wasmModule = await import(/* @vite-ignore */ blobUrl);
+        await wasmModule.default(new URL(wasmUrl, self.location.origin).href);
+        WasmGameEngine = wasmModule.WasmGameEngine;
+
+    } finally {
+        URL.revokeObjectURL(blobUrl);
+    }
+}
 
 self.onmessage = async (event) => {
     const { id, type, payload } = event.data;
@@ -10,7 +36,9 @@ self.onmessage = async (event) => {
 
         switch (type) {
             case 'init':
-                await init();
+                if (!WasmGameEngine) {
+                    await loadWasmGameEngine(payload.baseUrl);
+                }
                 result = true;
                 break;
 

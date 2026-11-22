@@ -5,6 +5,7 @@
 ## Build
 
 ```console
+$ (cd ./ui && npm run build)
 $ cargo tauri build
 ```
 
