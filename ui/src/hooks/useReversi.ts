@@ -54,6 +54,12 @@ export function useReversi() {
   const [showGameOver, setShowGameOver] = useState<boolean>(false);
   const messageTimerRef = useRef<number | null>(null);
 
+  // 感想戦ステート
+  const [historyList, setHistoryList] = useState<GameStateDto[]>([]);
+  const [reviewStep, setReviewStep] = useState<number>(0);
+  const [isForked, setIsForked] = useState<boolean>(false);
+  const [forkedStep, setForkedStep] = useState<number | null>(null);
+
   // 非同期処理ループで常に最新の状態を参照するためのRef
   const stateRef = useRef({
     currentSize,
@@ -112,7 +118,11 @@ export function useReversi() {
 
   // 盤面更新と石の反転アニメーション適用
   const applyNewStateWithAnimation = useCallback(
-    async (nextState: GameStateDto, prevBoardSnapshot: number[][] | null) => {
+    async (
+      nextState: GameStateDto,
+      prevBoardSnapshot: number[][] | null,
+      suppressGameOverModal = false
+    ) => {
       if (flipCleanupTimerRef.current) {
         window.clearTimeout(flipCleanupTimerRef.current);
         flipCleanupTimerRef.current = null;
@@ -172,7 +182,7 @@ export function useReversi() {
         stateRef.current.gameState = nextState;
       }
 
-      if (nextState.is_game_over) {
+      if (nextState.is_game_over && !suppressGameOverModal) {
         setShowGameOver(true);
       }
     },
@@ -389,6 +399,253 @@ export function useReversi() {
     }
   };
 
+  // 感想戦モードへの移行
+  const enterReviewMode = useCallback(async () => {
+    const backend = getBackend();
+    if (!backend) return;
+
+    try {
+      setIsLoading(true);
+      const history = await backend.getHistory();
+      setHistoryList(history);
+      const lastIndex = history.length > 0 ? history.length - 1 : 0;
+      setReviewStep(lastIndex);
+      setIsForked(false);
+      setForkedStep(null);
+      setLastMove(null);
+      setFlippingDiscs(new Map());
+      setShowGameOver(false);
+    } catch (e) {
+      showToastMessage(String(e), true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToastMessage]);
+
+  // 感想戦での手数移動（未分岐時のみ）
+  const goToReviewStep = useCallback(
+    (step: number) => {
+      if (isForked) return;
+      const clamped = Math.max(0, Math.min(step, historyList.length - 1));
+      setReviewStep(clamped);
+      setLastMove(null);
+      setFlippingDiscs(new Map());
+    },
+    [isForked, historyList.length]
+  );
+
+  // 感想戦でのマスクリック処理（分岐開始または分岐中の一手）
+  const handleReviewCellClick = useCallback(
+    async (row: number, col: number) => {
+      if (isAiThinking || isAnimatingMove) return;
+      const backend = getBackend();
+      if (!backend) return;
+
+      try {
+        if (!isForked) {
+          const currentState = historyList[reviewStep] ?? gameState;
+          if (currentState.is_game_over) return;
+          const isLegal = (currentState.legal_points || []).some(
+            ([r, c]) => r === row && c === col
+          );
+          if (!isLegal) return;
+
+          setIsLoading(true);
+          await backend.forkAt(reviewStep);
+          setIsForked(true);
+          setForkedStep(reviewStep);
+
+          const prevSnap = cloneBoard(currentState.board);
+          const res = await backend.putDisc(row, col);
+          setIsLoading(false);
+          await applyNewStateWithAnimation(res, prevSnap, true);
+
+          if (res.consecutive_passes === 1 && !res.is_game_over) {
+            const passedColor = (-res.turn) as DiscColor;
+            await triggerPassOverlay(passedColor, 'pvp', 1);
+          }
+        } else {
+          if (gameState.is_game_over) return;
+          const isLegal = (gameState.legal_points || []).some(
+            ([r, c]) => r === row && c === col
+          );
+          if (!isLegal) return;
+
+          const prevSnap = cloneBoard(gameState.board);
+          const res = await backend.putDisc(row, col);
+          await applyNewStateWithAnimation(res, prevSnap, true);
+
+          if (res.consecutive_passes === 1 && !res.is_game_over) {
+            const passedColor = (-res.turn) as DiscColor;
+            await triggerPassOverlay(passedColor, 'pvp', 1);
+          }
+        }
+      } catch (e) {
+        showToastMessage(String(e), true);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      isAiThinking,
+      isAnimatingMove,
+      isForked,
+      historyList,
+      reviewStep,
+      gameState,
+      applyNewStateWithAnimation,
+      triggerPassOverlay,
+      showToastMessage,
+    ]
+  );
+
+  // 感想戦でのAI着手処理（分岐開始または分岐中の一手）
+  const handleReviewAiMove = useCallback(async () => {
+    if (isAiThinking || isAnimatingMove) return;
+    const backend = getBackend();
+    if (!backend) return;
+
+    try {
+      if (!isForked) {
+        const currentState = historyList[reviewStep] ?? gameState;
+        if (currentState.is_game_over || !currentState.legal_points?.length) return;
+
+        setIsAiThinking(true);
+        stateRef.current.isAiThinking = true;
+        const colorName = currentState.turn === 1 ? '黒' : '白';
+        showToastMessage(`🤖 AI (${colorName}) が次の手を計算しています...`, false);
+
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => setTimeout(resolve, 80))
+        );
+
+        await backend.forkAt(reviewStep);
+        setIsForked(true);
+        setForkedStep(reviewStep);
+
+        const prevSnap = cloneBoard(currentState.board);
+        const minThinkMs = 400;
+        const startTime = performance.now();
+        const res = await backend.putByAi('high');
+        const elapsed = performance.now() - startTime;
+        if (elapsed < minThinkMs) {
+          await new Promise((r) => setTimeout(r, minThinkMs - elapsed));
+        }
+
+        setIsAiThinking(false);
+        stateRef.current.isAiThinking = false;
+        showToastMessage('', true);
+
+        await applyNewStateWithAnimation(res, prevSnap, true);
+
+        if (res.consecutive_passes === 1 && !res.is_game_over) {
+          const passedColor = (-res.turn) as DiscColor;
+          await triggerPassOverlay(passedColor, 'pvp', 1);
+        }
+      } else {
+        if (gameState.is_game_over || !gameState.legal_points?.length) return;
+
+        setIsAiThinking(true);
+        stateRef.current.isAiThinking = true;
+        const colorName = gameState.turn === 1 ? '黒' : '白';
+        showToastMessage(`🤖 AI (${colorName}) が次の手を計算しています...`, false);
+
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => setTimeout(resolve, 80))
+        );
+
+        const prevSnap = cloneBoard(gameState.board);
+        const minThinkMs = 400;
+        const startTime = performance.now();
+        const res = await backend.putByAi('high');
+        const elapsed = performance.now() - startTime;
+        if (elapsed < minThinkMs) {
+          await new Promise((r) => setTimeout(r, minThinkMs - elapsed));
+        }
+
+        setIsAiThinking(false);
+        stateRef.current.isAiThinking = false;
+        showToastMessage('', true);
+
+        await applyNewStateWithAnimation(res, prevSnap, true);
+
+        if (res.consecutive_passes === 1 && !res.is_game_over) {
+          const passedColor = (-res.turn) as DiscColor;
+          await triggerPassOverlay(passedColor, 'pvp', 1);
+        }
+      }
+    } catch (e) {
+      setIsAiThinking(false);
+      stateRef.current.isAiThinking = false;
+      showToastMessage(String(e), true);
+    }
+  }, [
+    isAiThinking,
+    isAnimatingMove,
+    isForked,
+    historyList,
+    reviewStep,
+    gameState,
+    showToastMessage,
+    applyNewStateWithAnimation,
+    triggerPassOverlay,
+  ]);
+
+  // 感想戦での1手戻る（Undo）処理
+  const handleReviewUndo = useCallback(async () => {
+    if (!isForked || isAiThinking || isAnimatingMove) return;
+    const backend = getBackend();
+    if (!backend) return;
+
+    try {
+      const res = await backend.undo();
+      setLastMove(null);
+      setFlippingDiscs(new Map());
+      setGameState(res);
+      stateRef.current.gameState = res;
+      showToastMessage('1手戻しました', true);
+    } catch {
+      showToastMessage('分岐起点局面です（これ以上戻れません）', true);
+    }
+  }, [isForked, isAiThinking, isAnimatingMove, showToastMessage]);
+
+  // 分岐シミュレーションから本譜へ戻る（Reset to Main）
+  const handleResetToReview = useCallback(async () => {
+    if (!isForked || isAiThinking || isAnimatingMove) return;
+    const backend = getBackend();
+    if (!backend) return;
+
+    try {
+      setIsLoading(true);
+      const resetStep = await backend.resetToMain();
+      setIsForked(false);
+      setForkedStep(null);
+      setReviewStep(resetStep);
+      setLastMove(null);
+      setFlippingDiscs(new Map());
+      showToastMessage(`本譜（${resetStep}手目）に戻りました`, true);
+    } catch (e) {
+      showToastMessage(String(e), true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isForked, isAiThinking, isAnimatingMove, showToastMessage]);
+
+  // 感想戦で現在表示すべき局面
+  const currentReviewGameState = isForked
+    ? gameState
+    : (historyList[reviewStep] ?? gameState);
+
+  // 感想戦で現在表示すべき着手位置
+  const currentReviewLastMove = isForked
+    ? lastMove
+    : reviewStep > 0 && historyList[reviewStep - 1] && historyList[reviewStep]
+      ? detectBoardChanges(
+        historyList[reviewStep - 1].board,
+        historyList[reviewStep].board
+      ).placed
+      : null;
+
   // 初回マウント時のバックエンド初期化
   useEffect(() => {
     const backend = getBackend();
@@ -412,6 +669,13 @@ export function useReversi() {
     message,
     passInfo,
     showGameOver,
+    // 感想戦状態
+    historyList,
+    reviewStep,
+    isForked,
+    forkedStep,
+    currentReviewGameState,
+    currentReviewLastMove,
     // 更新アクション
     setCurrentSize,
     setGameMode,
@@ -422,5 +686,12 @@ export function useReversi() {
     handleCellClick,
     handleUndo,
     handleManualAiMove,
+    // 感想戦アクション
+    enterReviewMode,
+    goToReviewStep,
+    handleReviewCellClick,
+    handleReviewAiMove,
+    handleReviewUndo,
+    handleResetToReview,
   };
 }

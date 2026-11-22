@@ -1,4 +1,4 @@
-import { RotateCcw, Home } from 'lucide-react';
+import { RotateCcw, Home, Sparkles } from 'lucide-react';
 import type { GameStateDto } from '../../types/reversi';
 
 /**
@@ -7,12 +7,14 @@ import type { GameStateDto } from '../../types/reversi';
  * @param show - モーダルを表示するかどうか
  * @param gameState - ゲームの状態
  * @param onPlayAgain - 再プレイ時のコールバック
+ * @param onGoToReview - 感想戦へ進むためのコールバック
  * @param onBackToStart - ゲーム終了時にタイトルに戻るためのコールバック
  */
 interface GameOverModalProps {
   show: boolean;
   gameState: GameStateDto;
   onPlayAgain: () => void;
+  onGoToReview: () => void;
   onBackToStart: () => void;
 }
 
@@ -25,6 +27,7 @@ export function GameOverModal({
   show,
   gameState,
   onPlayAgain,
+  onGoToReview,
   onBackToStart,
 }: GameOverModalProps) {
   return (
@@ -57,16 +60,25 @@ export function GameOverModal({
           <button
             type="button"
             onClick={onPlayAgain}
-            className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/30 hover:opacity-90 transition-all cursor-pointer"
+            className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white font-bold text-xs shadow-lg shadow-cyan-500/30 hover:opacity-90 transition-all cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Play Again</span>
+            <span>もう一度対局</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onGoToReview}
+            className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white font-bold text-xs shadow-lg shadow-cyan-500/30 hover:opacity-90 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-cyan-200" />
+            <span>対局を振り返る</span>
           </button>
 
           <button
             type="button"
             onClick={onBackToStart}
-            className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-medium text-xs transition-all cursor-pointer"
+            className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white font-bold text-xs shadow-lg shadow-cyan-500/30 hover:opacity-90 transition-all cursor-pointer"
           >
             <Home className="w-4 h-4" />
             <span>設定に戻る</span>
