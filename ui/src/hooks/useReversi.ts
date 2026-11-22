@@ -363,7 +363,7 @@ export function useReversi() {
 
       const minThinkMs = 500;
       const startTime = performance.now();
-      const res = await backend.putByAi(aiLevel);
+      const res = await backend.putByAi('high');  // 常に最強で補助
       const elapsed = performance.now() - startTime;
       if (elapsed < minThinkMs) {
         await new Promise((r) => setTimeout(r, minThinkMs - elapsed));
@@ -379,6 +379,9 @@ export function useReversi() {
         const passedColor = (-res.turn) as DiscColor;
         await triggerPassOverlay(passedColor, gameMode, playerColor);
       }
+
+      runAiTurnLoop();
+
     } catch (e) {
       setIsAiThinking(false);
       stateRef.current.isAiThinking = false;
