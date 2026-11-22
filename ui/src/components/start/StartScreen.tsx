@@ -44,7 +44,7 @@ export function StartScreen({
   onStartGame,
 }: StartScreenProps) {
   return (
-    <main className="flex-1 max-w-xl w-full mx-auto p-4 flex flex-col justify-center items-center">
+    <main className="flex-1 max-w-xl w-full mx-auto px-4 pt-4 pb-8 md:py-4 flex flex-col justify-start md:justify-center items-center">
       {/* メイン設定カード */}
       <div className="rounded-3xl px-6 pb-6 pt-2 sm:px-8 sm:pb-4 sm:pt-2 w-full space-y-6 relative overflow-hidden animate-fade-in">
         {/* カードヘッダー */}
