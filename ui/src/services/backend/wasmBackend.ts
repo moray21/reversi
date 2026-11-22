@@ -28,7 +28,9 @@ export class WasmBackend implements IReversiBackend {
     if (this.initialized) return;
 
     try {
-      this.worker = new Worker('./wasm-worker.js', { type: 'module' });
+      this.worker = new Worker(
+        new URL('./wasm-worker.js', import.meta.url), { type: 'module' }
+      );
       this.worker.onmessage = (event: MessageEvent) => {
         const { id, result, error } = event.data;
         const request = this.pendingRequests.get(id);
@@ -43,7 +45,9 @@ export class WasmBackend implements IReversiBackend {
       this.worker.onerror = (err) => {
         console.error('WASM Worker Error:', err);
       };
-      await this.sendToWorker('init');
+
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      await this.sendToWorker('init', { baseUrl });
     } catch (e) {
       console.warn('WASM Worker initialization fallback:', e);
     }
