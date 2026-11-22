@@ -241,7 +241,8 @@ export function useReversi() {
     async (
       size: BoardSize = stateRef.current.currentSize,
       overrideMode?: GameMode,
-      overridePlayerColor?: DiscColor
+      overridePlayerColor?: DiscColor,
+      overrideAiLevel?: AILevel
     ) => {
       const backend = getBackend();
       if (!backend) return;
@@ -251,6 +252,10 @@ export function useReversi() {
         overridePlayerColor ?? stateRef.current.playerColor;
 
       setCurrentSize(size);
+      if (overrideMode) setGameMode(overrideMode);
+      if (overridePlayerColor) setPlayerColor(overridePlayerColor);
+      if (overrideAiLevel) setAiLevel(overrideAiLevel);
+
       setIsAiThinking(false);
       stateRef.current.isAiThinking = false;
       setIsAnimatingMove(false);
@@ -381,39 +386,13 @@ export function useReversi() {
     }
   };
 
-  // モード変更ハンドラ
-  const handleModeChange = (mode: GameMode) => {
-    setGameMode(mode);
-    stateRef.current.gameMode = mode;
-    startNewGame(currentSize, mode, playerColor);
-  };
-
-  // プレイヤー色変更ハンドラ
-  const handlePlayerColorChange = (color: DiscColor) => {
-    setPlayerColor(color);
-    stateRef.current.playerColor = color;
-    startNewGame(currentSize, gameMode, color);
-  };
-
-  // 盤面サイズ変更ハンドラ
-  const handleBoardSizeChange = (size: BoardSize) => {
-    startNewGame(size, gameMode, playerColor);
-  };
-
-  // 初回マウント時の初期化とゲーム開始
+  // 初回マウント時のバックエンド初期化
   useEffect(() => {
-    let mounted = true;
     const backend = getBackend();
     (async () => {
       await backend?.init();
-      if (mounted) {
-        await startNewGame(8);
-      }
     })();
-    return () => {
-      mounted = false;
-    };
-  }, [startNewGame]);
+  }, []);
 
   return {
     // 状態
@@ -440,8 +419,5 @@ export function useReversi() {
     handleCellClick,
     handleUndo,
     handleManualAiMove,
-    handleModeChange,
-    handlePlayerColorChange,
-    handleBoardSizeChange,
   };
 }

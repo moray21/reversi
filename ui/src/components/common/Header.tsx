@@ -1,12 +1,15 @@
-import { Menu } from 'lucide-react';
+import { Home } from 'lucide-react';
+import type { AppScreen } from '../../types/reversi';
 
 /**
  * アプリケーションヘッダープロパティ
  *
- * @param onOpenSettings - 設定画面を開くコールバック
+ * @param currentScreen - 現在の画面
+ * @param onBackToStart - 開始画面に戻るコールバック
  */
 interface HeaderProps {
-  onOpenSettings: () => void;
+  currentScreen: AppScreen;
+  onBackToStart?: () => void;
 }
 
 /**
@@ -14,12 +17,15 @@ interface HeaderProps {
  *
  * @param HeaderProps アプリケーションヘッダープロパティ
  */
-export function Header({ onOpenSettings }: HeaderProps) {
+export function Header({
+  currentScreen,
+  onBackToStart,
+}: HeaderProps) {
   return (
-    <header className="w-full border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40 px-6 py-3 flex items-center justify-between">
+    <header className="w-full border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-6 py-3 flex items-center justify-between">
       <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-          <img src="/favicon.png" alt="Reversi Icon" className="w-6 h-6" />
+        <div>
+          <img src="/favicon.png" alt="Reversi Icon" className="w-8 h-8" />
         </div>
         <div>
           <h1 className="font-bold text-lg tracking-wider bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
@@ -29,13 +35,18 @@ export function Header({ onOpenSettings }: HeaderProps) {
       </div>
 
       <div className="flex items-center space-x-3">
-        <button
-          onClick={onOpenSettings}
-          aria-label="Open Settings"
-          className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-center text-slate-300 hover:text-white transition-all shadow-md cursor-pointer"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        {/* 対局画面中のみ「開始画面に戻る」ボタンを表示 */}
+        {currentScreen !== 'start' && onBackToStart && (
+          <button
+            type="button"
+            onClick={onBackToStart}
+            title="開始画面に戻る"
+            className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-center text-slate-300 hover:text-white transition shadow-sm cursor-pointer"
+          >
+            <Home className="w-4 h-4" />
+          </button>
+        )}
+
       </div>
     </header>
   );
