@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import type { GameStateDto, FlippingDiscInfo } from '../../types/reversi';
 import { Board } from '../game/Board';
+import { ScoreBoard } from '../game/ScoreBoard';
+import { showMessage } from '../game/message';
 
 /**
  * 感想戦画面のプロパティ
@@ -110,39 +112,12 @@ export function ReviewScreen({
       </div>
 
       {/* スコア・手番情報カード */}
-      <div className="w-full grid grid-cols-2 gap-3">
-        {/* 黒スコア */}
-        <div
-          className={`flex items-center justify-between px-4 py-2 rounded-xl transition-all ${reviewGameState.turn === 1 && !reviewGameState.is_game_over
-            ? 'bg-slate-900 border-2 border-cyan-500/80 shadow-lg shadow-cyan-500/10'
-            : 'bg-slate-900/90 border border-slate-800 opacity-70'
-            }`}
-        >
-          <div className="flex items-center space-x-2">
-            <div className="w-3.5 h-3.5 rounded-full bg-black border border-slate-600" />
-            <span className="text-xs font-medium text-slate-300">Black</span>
-          </div>
-          <span className="text-xl font-bold font-mono text-white">
-            {reviewGameState.n_black}
-          </span>
-        </div>
-
-        {/* 白スコア */}
-        <div
-          className={`flex items-center justify-between px-4 py-2 rounded-xl transition-all ${reviewGameState.turn === -1 && !reviewGameState.is_game_over
-            ? 'bg-slate-900 border-2 border-cyan-500/80 shadow-lg shadow-cyan-500/10'
-            : 'bg-slate-900/90 border border-slate-800 opacity-70'
-            }`}
-        >
-          <div className="flex items-center space-x-2">
-            <div className="w-3.5 h-3.5 rounded-full bg-white border border-slate-300" />
-            <span className="text-xs font-medium text-slate-300">White</span>
-          </div>
-          <span className="text-xl font-bold font-mono text-white">
-            {reviewGameState.n_white}
-          </span>
-        </div>
-      </div>
+      <ScoreBoard
+        gameState={reviewGameState}
+        gameMode={'pvp'}
+        playerColor={1}
+        isAiThinking={false}
+      />
 
       {/* 盤面 */}
       <Board
@@ -307,11 +282,7 @@ export function ReviewScreen({
       </div>
 
       {/* メッセージトースト */}
-      {message && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass-panel-glow px-4 py-2 rounded-full border border-cyan-500/50 text-cyan-300 text-xs font-mono shadow-2xl flex items-center space-x-2 animate-bounce">
-          <span>{message}</span>
-        </div>
-      )}
+      {message && showMessage(message)}
     </main>
   );
 }
