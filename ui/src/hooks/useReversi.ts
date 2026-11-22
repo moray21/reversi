@@ -286,7 +286,7 @@ export function useReversi() {
           res.turn !== activePlayerColor
         ) {
           setIsLoading(false);
-          await runAiTurnLoop();
+          void runAiTurnLoop();
         }
       } catch (e) {
         showToastMessage(String(e), true);
