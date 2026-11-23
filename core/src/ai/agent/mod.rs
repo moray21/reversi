@@ -8,10 +8,13 @@
 //!
 //! * `RandomAgent` - 合法手からランダムに選択するAI
 //! * `NegamaxAgent` - ネガマックス法 ＋ αβ枝刈りを行うAI
+//! * `EstablishedProcedureAgent` - 定石を利用するAI
 
+mod established;
 mod negamax;
 mod random;
 
+pub use established::EstablishedProcedureAgent;
 pub use negamax::NegamaxAgent;
 pub use random::RandomAgent;
 

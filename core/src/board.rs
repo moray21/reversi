@@ -15,7 +15,7 @@ use std::collections::HashSet;
 
 // ------------------------------ Disc ------------------------------
 /// ディスクの種類
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Disc {
     Black = 1,
     White = -1,
@@ -41,16 +41,94 @@ impl Disc {
             Disc::White => Disc::Black,
         }
     }
+    /// 全要素のイテレータを返す
+    ///
+    /// # Returns
+    ///
+    /// * `Iterator<Item = Disc>`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::Disc;
+    ///
+    /// assert_eq!(Disc::variants().count(), 2);
+    /// ```
+    pub fn variants() -> impl Iterator<Item = Self> {
+        [Self::Black, Self::White].into_iter()
+    }
+
+    /// 値から`Disc`に変換する
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - 変換前の値
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::Disc;
+    ///
+    /// assert_eq!(Disc::from_value(1), Ok(Disc::Black));
+    /// assert_eq!(Disc::from_value(-1), Ok(Disc::White));
+    /// assert!(Disc::from_value(2).is_err());
+    /// ```
+    pub fn from_value(value: i8) -> Result<Self, String> {
+        Self::variants()
+            .find(|&x| (x as i8) == value)
+            .ok_or_else(|| format!("Unknown option: `{}`", value))
+    }
 }
 
 // ------------------------------ Board ------------------------------
 
 /// 盤面のサイズ
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BoardSize {
     Size4 = 4,
     Size6 = 6,
     Size8 = 8,
+}
+
+impl BoardSize {
+    /// 全要素のイテレータを返す
+    ///
+    /// # Returns
+    ///
+    /// * `Iterator<Item = BoardSize>`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::BoardSize;
+    ///
+    /// assert_eq!(BoardSize::variants().count(), 3);
+    /// ```
+    pub fn variants() -> impl Iterator<Item = Self> {
+        [Self::Size4, Self::Size6, Self::Size8].into_iter()
+    }
+
+    /// 値から`BoardSize`に変換する
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - 変換前の値
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::BoardSize;
+    ///
+    /// assert_eq!(BoardSize::from_value(4), Ok(BoardSize::Size4));
+    /// assert_eq!(BoardSize::from_value(6), Ok(BoardSize::Size6));
+    /// assert_eq!(BoardSize::from_value(8), Ok(BoardSize::Size8));
+    /// assert!(BoardSize::from_value(2).is_err());
+    /// ```
+    pub fn from_value(size: usize) -> Result<Self, String> {
+        Self::variants()
+            .find(|&x| (x as usize) == size)
+            .ok_or_else(|| format!("Unknown option: `{}`", size))
+    }
 }
 
 /// 盤面の対称変換パターン
@@ -441,7 +519,7 @@ impl Point {
 /// * `size` - 盤面のサイズ
 /// * `black` - 黒石が置かれている場所を1で、それ以外が0の64ビット
 /// * `white` - 白石が置かれている場所を1で、それ以外が0の64ビット
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Board {
     pub size: BoardSize,
     pub black: u64,
@@ -811,6 +889,111 @@ impl Board {
             .axis_iter(Axis(0))
             .map(|row| row.to_vec())
             .collect()
+    }
+
+    /// 配列データから盤面を作成する
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - 2次元配列の盤面
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize};
+    ///
+    /// // 4×4
+    /// let size = BoardSize::Size4;
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0],
+    ///     vec![0, -1, 1, 0],
+    ///     vec![0, 1, -1, 0],
+    ///     vec![0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// let expected = Board::initialize(size);
+    /// assert_eq!(board, expected);
+    ///
+    /// // 6×6
+    /// let size = BoardSize::Size6;
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, -1, 1, 0, 0],
+    ///     vec![0, 0, 1, -1, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// let expected = Board::initialize(size);
+    /// assert_eq!(board, expected);
+    ///
+    /// // 8×8
+    /// let size = BoardSize::Size8;
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, -1, 1, 0, 0, 0],
+    ///     vec![0, 0, 0, 1, -1, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// let expected = Board::initialize(size);
+    /// assert_eq!(board, expected);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// * サイズが4, 6, 8ではない
+    ///
+    /// ```should_panic
+    /// use reversi::Board;
+    ///
+    /// let data = vec![
+    ///     vec![0, 0, 0],
+    ///     vec![0, -1, 1],
+    ///     vec![0, 1, -1],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// ```
+    ///
+    /// * 1次元目と2次元目のサイズがあっていない
+    ///
+    /// ```should_panic
+    /// use reversi::Board;
+    ///
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, -1, 1, 0, 0, 0],
+    ///     vec![0, 1, -1, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// ```
+    pub fn from_vec(data: Vec<Vec<i8>>) -> Self {
+        let n = data.len();
+        let size = BoardSize::from_value(n).unwrap();
+        if data[0].len() != n {
+            panic!("Invalid data are specified.")
+        }
+
+        let mut black = 0;
+        let mut white = 0;
+        for r in 0..n {
+            for c in 0..n {
+                let value = data[r][c];
+                let point = Point::new(r, c);
+                if value == Disc::Black as i8 {
+                    black |= point.to_bit(size);
+                } else if value == Disc::White as i8 {
+                    white |= point.to_bit(size);
+                }
+            }
+        }
+        Self::new(size, black, white)
     }
 
     /// 盤面を黒は1白は-1空は0のndarrayを返す

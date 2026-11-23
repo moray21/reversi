@@ -7,3 +7,4 @@ edition = "2024"
 ndarray = "0.17.2"
 rand = "0.10"
 serde = { version = "1.0", features = ["derive"] }
+toml = "1.2.2"
