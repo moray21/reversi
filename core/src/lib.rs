@@ -8,6 +8,7 @@
 //!
 //! * `Disc` - ディスク
 //! * `BoardSize` - 盤面のサイズ
+//! * `BoardSymmetry` - 盤面の対称性
 //!
 //! # Struct
 //!
@@ -23,7 +24,7 @@ mod board;
 mod dto;
 mod session;
 mod state;
-pub use board::{Board, BoardSize, Disc, Point};
+pub use board::{Board, BoardSize, BoardSymmetry, Disc, Point};
 pub use dto::GameStateDto;
 pub use session::GameSession;
 pub use state::{GameSnapshot, GameState};

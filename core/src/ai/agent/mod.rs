@@ -8,12 +8,18 @@
 //!
 //! * `RandomAgent` - 合法手からランダムに選択するAI
 //! * `NegamaxAgent` - ネガマックス法 ＋ αβ枝刈りを行うAI
+//! * `EstablishedProcedureAgent` - 定石を利用するAI
+//! * `EmptyCountSwitcher` - 残りの空きマスの数に応じて使うAIを切り替えるAI
 
+mod established;
 mod negamax;
 mod random;
+mod switcher;
 
+pub use established::EstablishedProcedureAgent;
 pub use negamax::NegamaxAgent;
 pub use random::RandomAgent;
+pub use switcher::EmptyCountSwitcher;
 
 use crate::board::Point;
 use crate::state::GameState;

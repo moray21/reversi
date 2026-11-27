@@ -3,8 +3,8 @@
 //! # Functions
 //!
 //! * `select_hand` - AIにより手を決定する
-use super::{AiAgent, NegamaxAgent};
-use crate::{GameState, Point};
+use super::{AiAgent, EmptyCountSwitcher, EstablishedProcedureAgent, NegamaxAgent, RandomAgent};
+use crate::{BoardSize, GameState, Point};
 use std::fmt;
 use std::str::FromStr;
 
@@ -132,23 +132,39 @@ pub fn select_hand(
     }
 
     // AIによる手番の決定
-    let point = match level {
-        // 弱め
-        IntelligenceLevel::Low => {
-            let mut ai = NegamaxAgent::from_rulebased(2);
-            ai.select_hand(&*game)
-        }
-        // 普通
-        IntelligenceLevel::Average => {
-            let mut ai = NegamaxAgent::from_rulebased(6);
-            ai.select_hand(&*game)
-        }
-        // 強め
-        IntelligenceLevel::High => {
-            let mut ai = NegamaxAgent::from_rulebased(12);
-            ai.select_hand(&*game)
-        }
-    };
+    let mut ai = build_ai(game.board.size, level);
+    let point = ai.select_hand(&*game);
 
     Ok(point)
+}
+
+/// 盤面のサイズやレベルに応じたエージェントを作成して返す
+///
+/// # Arguments
+///
+/// * `size` - 盤面のサイズ
+/// * `level` - AIの思考力
+///
+/// # Returns
+///
+/// * `Box<dyn AiAgent>`
+fn build_ai(size: BoardSize, level: IntelligenceLevel) -> Box<dyn AiAgent> {
+    match (size, level) {
+        // 弱め
+        (_, IntelligenceLevel::Low) => Box::new(RandomAgent::new(0)),
+        // 普通
+        (BoardSize::Size4, IntelligenceLevel::Average) => Box::new(NegamaxAgent::from_rulebased(6)),
+        (_, IntelligenceLevel::Average) => {
+            let alternative_agent = NegamaxAgent::from_rulebased(6);
+            Box::new(EstablishedProcedureAgent::from_included(alternative_agent))
+        }
+        // 強め
+        (_, IntelligenceLevel::High) => {
+            let first_ai = NegamaxAgent::from_rulebased(8);
+            let second_ai = NegamaxAgent::from_rulebased(12);
+            let th_count = 12;
+            let alternative_agent = EmptyCountSwitcher::new(first_ai, second_ai, th_count);
+            Box::new(EstablishedProcedureAgent::from_included(alternative_agent))
+        }
+    }
 }

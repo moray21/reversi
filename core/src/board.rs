@@ -11,10 +11,11 @@
 //! * `Point` - 盤面の座標
 
 use ndarray::{Array2, Array3, Axis};
+use std::collections::HashSet;
 
 // ------------------------------ Disc ------------------------------
 /// ディスクの種類
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Disc {
     Black = 1,
     White = -1,
@@ -40,16 +41,121 @@ impl Disc {
             Disc::White => Disc::Black,
         }
     }
+    /// 全要素のイテレータを返す
+    ///
+    /// # Returns
+    ///
+    /// * `Iterator<Item = Disc>`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::Disc;
+    ///
+    /// assert_eq!(Disc::variants().count(), 2);
+    /// ```
+    pub fn variants() -> impl Iterator<Item = Self> {
+        [Self::Black, Self::White].into_iter()
+    }
+
+    /// 値から`Disc`に変換する
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - 変換前の値
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::Disc;
+    ///
+    /// assert_eq!(Disc::from_value(1), Ok(Disc::Black));
+    /// assert_eq!(Disc::from_value(-1), Ok(Disc::White));
+    /// assert!(Disc::from_value(2).is_err());
+    /// ```
+    pub fn from_value(value: i8) -> Result<Self, String> {
+        Self::variants()
+            .find(|&x| (x as i8) == value)
+            .ok_or_else(|| format!("Unknown option: `{}`", value))
+    }
 }
 
 // ------------------------------ Board ------------------------------
 
 /// 盤面のサイズ
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BoardSize {
     Size4 = 4,
     Size6 = 6,
     Size8 = 8,
+}
+
+impl BoardSize {
+    /// 全要素のイテレータを返す
+    ///
+    /// # Returns
+    ///
+    /// * `Iterator<Item = BoardSize>`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::BoardSize;
+    ///
+    /// assert_eq!(BoardSize::variants().count(), 3);
+    /// ```
+    pub fn variants() -> impl Iterator<Item = Self> {
+        [Self::Size4, Self::Size6, Self::Size8].into_iter()
+    }
+
+    /// 値から`BoardSize`に変換する
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - 変換前の値
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::BoardSize;
+    ///
+    /// assert_eq!(BoardSize::from_value(4), Ok(BoardSize::Size4));
+    /// assert_eq!(BoardSize::from_value(6), Ok(BoardSize::Size6));
+    /// assert_eq!(BoardSize::from_value(8), Ok(BoardSize::Size8));
+    /// assert!(BoardSize::from_value(2).is_err());
+    /// ```
+    pub fn from_value(size: usize) -> Result<Self, String> {
+        Self::variants()
+            .find(|&x| (x as usize) == size)
+            .ok_or_else(|| format!("Unknown option: `{}`", size))
+    }
+}
+
+/// 盤面の対称変換パターン
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardSymmetry {
+    Identity,       // そのまま
+    Rotate90,       // 時計回り90度
+    Rotate180,      // 180度
+    Rotate270,      // 時計回り270度
+    FlipH,          // 左右反転
+    FlipHRotate90,  // 左右反転 + 90度
+    FlipHRotate180, // 左右反転 + 180度
+    FlipHRotate270, // 左右反転 + 270度
+}
+
+impl BoardSymmetry {
+    /// 全八パターン
+    pub const ALL: [BoardSymmetry; 8] = [
+        Self::Identity,
+        Self::Rotate90,
+        Self::Rotate180,
+        Self::Rotate270,
+        Self::FlipH,
+        Self::FlipHRotate90,
+        Self::FlipHRotate180,
+        Self::FlipHRotate270,
+    ];
 }
 
 /// 盤面の座標 (左上が(0,0))
@@ -240,6 +346,170 @@ impl Point {
         let size = size as usize;
         self.row < size && self.col < size
     }
+
+    /// 指定の変換を行った座標を返す
+    ///
+    /// # Arguments
+    ///
+    /// * `sym` - 変換内容
+    ///
+    /// # Returns
+    ///
+    /// * `Point` - 変換後の座標
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{BoardSize, BoardSymmetry, Point};
+    ///
+    /// let point = Point::new(0, 1);
+    ///
+    /// // 4×4
+    /// let size = BoardSize::Size4;
+    /// assert_eq!(point.transform(BoardSymmetry::Identity, size), Point::new(0, 1));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate90, size), Point::new(1, 3));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate180, size), Point::new(3, 2));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate270, size), Point::new(2, 0));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipH, size), Point::new(0, 2));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate90, size), Point::new(2, 3));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate180, size), Point::new(3, 1));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate270, size), Point::new(1, 0));
+    ///
+    /// // 6×6
+    /// let size = BoardSize::Size6;
+    /// assert_eq!(point.transform(BoardSymmetry::Identity, size), Point::new(0, 1));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate90, size), Point::new(1, 5));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate180, size), Point::new(5, 4));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate270, size), Point::new(4, 0));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipH, size), Point::new(0, 4));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate90, size), Point::new(4, 5));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate180, size), Point::new(5, 1));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate270, size), Point::new(1, 0));
+    ///
+    /// // 8×8
+    /// let size = BoardSize::Size8;
+    /// assert_eq!(point.transform(BoardSymmetry::Identity, size), Point::new(0, 1));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate90, size), Point::new(1, 7));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate180, size), Point::new(7, 6));
+    /// assert_eq!(point.transform(BoardSymmetry::Rotate270, size), Point::new(6, 0));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipH, size), Point::new(0, 6));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate90, size), Point::new(6, 7));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate180, size), Point::new(7, 1));
+    /// assert_eq!(point.transform(BoardSymmetry::FlipHRotate270, size), Point::new(1, 0));
+    /// ```
+    pub fn transform(&self, sym: BoardSymmetry, size: BoardSize) -> Self {
+        match sym {
+            BoardSymmetry::Identity => *self,
+            BoardSymmetry::Rotate90 => Self {
+                row: self.col,
+                col: size as usize - self.row - 1,
+            },
+            BoardSymmetry::Rotate180 => Self {
+                row: size as usize - self.row - 1,
+                col: size as usize - self.col - 1,
+            },
+            BoardSymmetry::Rotate270 => Self {
+                row: size as usize - self.col - 1,
+                col: self.row,
+            },
+            BoardSymmetry::FlipH => Self {
+                row: self.row,
+                col: size as usize - self.col - 1,
+            },
+            BoardSymmetry::FlipHRotate90 => Self {
+                row: size as usize - self.col - 1,
+                col: size as usize - self.row - 1,
+            },
+            BoardSymmetry::FlipHRotate180 => Self {
+                row: size as usize - self.row - 1,
+                col: self.col,
+            },
+            BoardSymmetry::FlipHRotate270 => Self {
+                row: self.col,
+                col: self.row,
+            },
+        }
+    }
+
+    /// 現在位置は指定の変換を行ったものみなし、逆変換を行った座標を返す
+    ///
+    /// # Arguments
+    ///
+    /// * `sym` - 変換内容
+    ///
+    /// # Returns
+    ///
+    /// * `Point` - 変換後の座標
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{BoardSize, BoardSymmetry, Point};
+    ///
+    /// let point = Point::new(0, 1);
+    /// // 4×4
+    /// let size = BoardSize::Size4;
+    /// assert_eq!(Point::new(0, 1).inverse_transform(BoardSymmetry::Identity, size), point);
+    /// assert_eq!(Point::new(1, 3).inverse_transform(BoardSymmetry::Rotate90, size), point);
+    /// assert_eq!(Point::new(3, 2).inverse_transform(BoardSymmetry::Rotate180, size), point);
+    /// assert_eq!(Point::new(2, 0).inverse_transform(BoardSymmetry::Rotate270, size), point);
+    /// assert_eq!(Point::new(0, 2).inverse_transform(BoardSymmetry::FlipH, size), point);
+    /// assert_eq!(Point::new(2, 3).inverse_transform(BoardSymmetry::FlipHRotate90, size), point);
+    /// assert_eq!(Point::new(3, 1).inverse_transform(BoardSymmetry::FlipHRotate180, size), point);
+    /// assert_eq!(Point::new(1, 0).inverse_transform(BoardSymmetry::FlipHRotate270, size), point);
+    ///
+    /// // 6×6
+    /// let size = BoardSize::Size6;
+    /// assert_eq!(Point::new(0, 1).inverse_transform(BoardSymmetry::Identity, size), point);
+    /// assert_eq!(Point::new(1, 5).inverse_transform(BoardSymmetry::Rotate90, size), point);
+    /// assert_eq!(Point::new(5, 4).inverse_transform(BoardSymmetry::Rotate180, size), point);
+    /// assert_eq!(Point::new(4, 0).inverse_transform(BoardSymmetry::Rotate270, size), point);
+    /// assert_eq!(Point::new(0, 4).inverse_transform(BoardSymmetry::FlipH, size), point);
+    /// assert_eq!(Point::new(4, 5).inverse_transform(BoardSymmetry::FlipHRotate90, size), point);
+    /// assert_eq!(Point::new(5, 1).inverse_transform(BoardSymmetry::FlipHRotate180, size), point);
+    /// assert_eq!(Point::new(1, 0).inverse_transform(BoardSymmetry::FlipHRotate270, size), point);
+    ///
+    /// // 8×8
+    /// let size = BoardSize::Size8;
+    /// assert_eq!(Point::new(0, 1).inverse_transform(BoardSymmetry::Identity, size), point);
+    /// assert_eq!(Point::new(1, 7).inverse_transform(BoardSymmetry::Rotate90, size), point);
+    /// assert_eq!(Point::new(7, 6).inverse_transform(BoardSymmetry::Rotate180, size), point);
+    /// assert_eq!(Point::new(6, 0).inverse_transform(BoardSymmetry::Rotate270, size), point);
+    /// assert_eq!(Point::new(0, 6).inverse_transform(BoardSymmetry::FlipH, size), point);
+    /// assert_eq!(Point::new(6, 7).inverse_transform(BoardSymmetry::FlipHRotate90, size), point);
+    /// assert_eq!(Point::new(7, 1).inverse_transform(BoardSymmetry::FlipHRotate180, size), point);
+    /// assert_eq!(Point::new(1, 0).inverse_transform(BoardSymmetry::FlipHRotate270, size), point);
+    ///
+    /// // 全座標
+    /// for size in [BoardSize::Size4, BoardSize::Size6, BoardSize::Size8] {
+    ///     let n = size as usize;
+    ///
+    ///     for row in 0..n {
+    ///         for col in 0..n {
+    ///             let original = Point::new(row, col);
+    ///
+    ///             for sym in BoardSymmetry::ALL {
+    ///                 let restored = original.transform(sym, size).inverse_transform(sym, size);
+    ///                 let back = original.inverse_transform(sym, size).transform(sym, size);
+    ///                 assert_eq!(original, restored);
+    ///                 assert_eq!(original, back);
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn inverse_transform(&self, sym: BoardSymmetry, size: BoardSize) -> Self {
+        match sym {
+            BoardSymmetry::Identity => *self,
+            BoardSymmetry::Rotate90 => self.transform(BoardSymmetry::Rotate270, size),
+            BoardSymmetry::Rotate180 => self.transform(sym, size),
+            BoardSymmetry::Rotate270 => self.transform(BoardSymmetry::Rotate90, size),
+            BoardSymmetry::FlipH => self.transform(sym, size),
+            BoardSymmetry::FlipHRotate90 => self.transform(sym, size),
+            BoardSymmetry::FlipHRotate180 => self.transform(sym, size),
+            BoardSymmetry::FlipHRotate270 => self.transform(sym, size),
+        }
+    }
 }
 
 /// 盤面(ビットボード)
@@ -249,7 +519,7 @@ impl Point {
 /// * `size` - 盤面のサイズ
 /// * `black` - 黒石が置かれている場所を1で、それ以外が0の64ビット
 /// * `white` - 白石が置かれている場所を1で、それ以外が0の64ビット
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Board {
     pub size: BoardSize,
     pub black: u64,
@@ -402,6 +672,24 @@ impl Board {
     /// ```
     pub fn n_empty(&self) -> u8 {
         self.empty().count_ones() as u8
+    }
+
+    /// 黒と白の盤面を結合して1つのu128で返す
+    ///
+    /// # Returns
+    ///
+    /// * `u128` - 前半64ビットが黒、後半64ビットが白
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize};
+    /// let board = Board::new(BoardSize::Size8, 1, 2);
+    /// let value = board.to_hashable();
+    /// assert_eq!(value, 0x0000_0000_0000_0001_0000_0000_0000_0002);
+    /// ```
+    pub fn to_hashable(&self) -> u128 {
+        ((self.black as u128) << 64) | (self.white as u128)
     }
 
     /// 黒石の座標のリストを返す
@@ -601,6 +889,111 @@ impl Board {
             .axis_iter(Axis(0))
             .map(|row| row.to_vec())
             .collect()
+    }
+
+    /// 配列データから盤面を作成する
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - 2次元配列の盤面
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize};
+    ///
+    /// // 4×4
+    /// let size = BoardSize::Size4;
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0],
+    ///     vec![0, -1, 1, 0],
+    ///     vec![0, 1, -1, 0],
+    ///     vec![0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// let expected = Board::initialize(size);
+    /// assert_eq!(board, expected);
+    ///
+    /// // 6×6
+    /// let size = BoardSize::Size6;
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, -1, 1, 0, 0],
+    ///     vec![0, 0, 1, -1, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// let expected = Board::initialize(size);
+    /// assert_eq!(board, expected);
+    ///
+    /// // 8×8
+    /// let size = BoardSize::Size8;
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, -1, 1, 0, 0, 0],
+    ///     vec![0, 0, 0, 1, -1, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// let expected = Board::initialize(size);
+    /// assert_eq!(board, expected);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// * サイズが4, 6, 8ではない
+    ///
+    /// ```should_panic
+    /// use reversi::Board;
+    ///
+    /// let data = vec![
+    ///     vec![0, 0, 0],
+    ///     vec![0, -1, 1],
+    ///     vec![0, 1, -1],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// ```
+    ///
+    /// * 1次元目と2次元目のサイズがあっていない
+    ///
+    /// ```should_panic
+    /// use reversi::Board;
+    ///
+    /// let data = vec![
+    ///     vec![0, 0, 0, 0, 0, 0],
+    ///     vec![0, -1, 1, 0, 0, 0],
+    ///     vec![0, 1, -1, 0, 0, 0],
+    ///     vec![0, 0, 0, 0, 0, 0],
+    /// ];
+    /// let board = Board::from_vec(data);
+    /// ```
+    pub fn from_vec(data: Vec<Vec<i8>>) -> Self {
+        let n = data.len();
+        let size = BoardSize::from_value(n).unwrap();
+        if data[0].len() != n {
+            panic!("Invalid data are specified.")
+        }
+
+        let mut black = 0;
+        let mut white = 0;
+        for r in 0..n {
+            for c in 0..n {
+                let value = data[r][c];
+                let point = Point::new(r, c);
+                if value == Disc::Black as i8 {
+                    black |= point.to_bit(size);
+                } else if value == Disc::White as i8 {
+                    white |= point.to_bit(size);
+                }
+            }
+        }
+        Self::new(size, black, white)
     }
 
     /// 盤面を黒は1白は-1空は0のndarrayを返す
@@ -1140,6 +1533,42 @@ impl Board {
         Point::from_some_bit(hands, self.size)
     }
 
+    /// 次の盤面の正規化を行い対称ではない合法手のみのリストを返す
+    ///
+    /// # Arguments
+    ///
+    /// * `disc` - 自分の石の色
+    ///
+    /// # Returns
+    ///
+    /// * Vec<Point> - 合法手のリスト
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Disc, Point};
+    ///
+    /// let board = Board::initialize(BoardSize::Size4);
+    /// let points = board.get_canonical_legal_points(Disc::Black);
+    /// assert_eq!(points.len(), 1);
+    /// assert_eq!(points[0], Point::new(3, 2));
+    /// ```
+    pub fn get_canonical_legal_points(&self, disc: Disc) -> Vec<Point> {
+        let mut seen = HashSet::new();
+        let mut result = Vec::new();
+
+        for point in self.get_legal_points(disc) {
+            let mut board = self.clone();
+            if board.put_disc(point, disc) {
+                let (canonical_board, _) = board.get_canonical();
+                if seen.insert(canonical_board.to_hashable()) {
+                    result.push(point);
+                }
+            }
+        }
+        result
+    }
+
     /// 合法手があるか判定する
     ///
     /// # Arguments
@@ -1266,5 +1695,335 @@ impl Board {
         }
 
         true
+    }
+
+    /// Delta Swap変換
+    ///
+    /// mask と mask << delta が示す2組の部分ビット列を入れ替える
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - 変換前の64ビット
+    /// * `mask` - 入れ替えたいビット列のうち、下位に位置するビットを1で埋めた64ビット
+    /// * `delta` - 交換時のシフト量
+    ///
+    /// # Returns
+    ///
+    /// * `u64`
+    fn delta_swap(x: u64, mask: u64, delta: u8) -> u64 {
+        let t = (x ^ (x >> delta)) & mask;
+        x ^ t ^ (t << delta)
+    }
+
+    /// 複数の変換工程を経て生成されるBoardを返す
+    ///
+    /// # Arguments
+    ///
+    /// * `steps` - delta_swapに適用する際のmaskとdeltaのリスト
+    ///
+    /// # Returns
+    ///
+    /// * `Board`
+    fn apply_delta_swaps(&self, steps: &[(u64, u8)]) -> Self {
+        let flip_bits = |x: u64| -> u64 {
+            let mut y = x;
+            for &(mask, delta) in steps {
+                y = Self::delta_swap(y, mask, delta);
+            }
+            y
+        };
+
+        let black = flip_bits(self.black);
+        let white = flip_bits(self.white);
+        Self::new(self.size, black, white)
+    }
+
+    /// 水平反転
+    ///
+    /// # Returns
+    ///
+    /// * `Board`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Point};
+    ///
+    /// for size in [BoardSize::Size4, BoardSize::Size6, BoardSize::Size8] {
+    ///     let n = size as usize;
+    ///     for row in 0..n {
+    ///         for col in 0..n {
+    ///             let point = Point::new(row, col);
+    ///             let board = Board::new(size, point.to_bit(size), 0);
+    ///             let flip_board = board.hflip();
+    ///             let black_points = flip_board.get_black_points();
+    ///             let expect = point.transform(BoardSymmetry::FlipH, size);
+    ///             assert_eq!(black_points.len(), 1);
+    ///             assert_eq!(black_points[0], expect);
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn hflip(&self) -> Self {
+        let steps: &[(u64, u8)] = match self.size {
+            BoardSize::Size4 => &[(0x0000_0000_0000_5555, 1), (0x0000_0000_0000_3333, 2)],
+            BoardSize::Size6 => &[
+                (
+                    0b00000000_00000000_00000000_00000010_01001001_00100100_10010010_01001001,
+                    2,
+                ),
+                (
+                    0b00000000_00000000_00000000_00000001_11000111_00011100_01110001_11000111,
+                    3,
+                ),
+            ],
+            BoardSize::Size8 => &[
+                (0x5555_5555_5555_5555, 1),
+                (0x3333_3333_3333_3333, 2),
+                (0x0F0F_0F0F_0F0F_0F0F, 4),
+            ],
+        };
+        self.apply_delta_swaps(steps)
+    }
+
+    /// 垂直反転
+    ///
+    /// # Returns
+    ///
+    /// * `Board`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Point};
+    ///
+    /// for size in [BoardSize::Size4, BoardSize::Size6, BoardSize::Size8] {
+    ///     let n = size as usize;
+    ///     for row in 0..n {
+    ///         for col in 0..n {
+    ///             let point = Point::new(row, col);
+    ///             let board = Board::new(size, point.to_bit(size), 0);
+    ///             let flip_board = board.vflip();
+    ///             let black_points = flip_board.get_black_points();
+    ///             let expect = point.transform(BoardSymmetry::FlipHRotate180, size);
+    ///             assert_eq!(black_points.len(), 1);
+    ///             assert_eq!(black_points[0], expect);
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn vflip(&self) -> Self {
+        let steps: &[(u64, u8)] = match self.size {
+            BoardSize::Size4 => &[(0x0000_0000_0000_0F0F, 4), (0x0000_0000_0000_00FF, 8)],
+            BoardSize::Size6 => &[
+                (
+                    0b00000000_00000000_00000000_00000000_00000000_11111100_00000000_00111111,
+                    12,
+                ),
+                (
+                    0b00000000_00000000_00000000_00000000_00000000_00000011_11111111_11111111,
+                    18,
+                ),
+            ],
+            BoardSize::Size8 => &[
+                (0x00FF_00FF_00FF_00FF, 8),
+                (0x0000_FFFF_0000_FFFF, 16),
+                (0x0000_0000_FFFF_FFFF, 32),
+            ],
+        };
+        self.apply_delta_swaps(steps)
+    }
+
+    /// 対角反転 (y=x対称)
+    ///
+    /// # Returns
+    ///
+    /// * `Board`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Point};
+    ///
+    /// for size in [BoardSize::Size4, BoardSize::Size6, BoardSize::Size8] {
+    ///     let n = size as usize;
+    ///     for row in 0..n {
+    ///         for col in 0..n {
+    ///             let point = Point::new(row, col);
+    ///             let board = Board::new(size, point.to_bit(size), 0);
+    ///             let flip_board = board.dflip();
+    ///             let black_points = flip_board.get_black_points();
+    ///             let expect = point.transform(BoardSymmetry::FlipHRotate90, size);
+    ///             assert_eq!(black_points.len(), 1);
+    ///             assert_eq!(black_points[0], expect);
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn dflip(&self) -> Self {
+        let steps: &[(u64, u8)] = match self.size {
+            BoardSize::Size4 => &[(0x0000_0000_0000_0505, 5), (0x0000_0000_0000_0033, 10)],
+            BoardSize::Size6 => &[
+                (
+                    0b00000000_00000000_00000000_00000000_00000000_00100100_00000000_00001001,
+                    14,
+                ),
+                (
+                    0b00000000_00000000_00000000_00000000_00001001_01001000_00000010_01010010,
+                    7,
+                ),
+                (
+                    0b00000000_00000000_00000000_00000000_00000000_00000000_01110001_11000111,
+                    21,
+                ),
+            ],
+            BoardSize::Size8 => &[
+                (0x0055_0055_0055_0055, 9),
+                (0x0000_3333_0000_3333, 18),
+                (0x0000_0000_0F0F_0F0F, 36),
+            ],
+        };
+        self.apply_delta_swaps(steps)
+    }
+
+    /// 対角反転（y=-x対称, 転置処理）
+    ///
+    /// # Returns
+    ///
+    /// * `Board`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Point};
+    ///
+    /// for size in [BoardSize::Size4, BoardSize::Size6, BoardSize::Size8] {
+    ///     let n = size as usize;
+    ///     for row in 0..n {
+    ///         for col in 0..n {
+    ///             let point = Point::new(row, col);
+    ///             let board = Board::new(size, point.to_bit(size), 0);
+    ///             let flip_board = board.transpose();
+    ///             let black_points = flip_board.get_black_points();
+    ///             let expect = point.transform(BoardSymmetry::FlipHRotate270, size);
+    ///             assert_eq!(black_points.len(), 1);
+    ///             assert_eq!(black_points[0], expect);
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn transpose(&self) -> Self {
+        let steps: &[(u64, u8)] = match self.size {
+            BoardSize::Size4 => &[(0x0000_0000_0000_0A0A, 3), (0x0000_0000_0000_00cc, 6)],
+            BoardSize::Size6 => &[
+                (
+                    0b00000000_00000000_00000000_00000000_00000000_10010000_00000000_00100100,
+                    10,
+                ),
+                (
+                    0b00000000_00000000_00000000_00000000_00100100_01001000_00001001_00010010,
+                    5,
+                ),
+                (
+                    0b00000000_00000000_00000000_00000000_00000000_00000011_10001110_00111000,
+                    15,
+                ),
+            ],
+            BoardSize::Size8 => &[
+                (0x00AA_00AA_00AA_00AA, 7),
+                (0x0000_cccc_0000_cccc, 14),
+                (0x0000_0000_F0F0_F0F0, 28),
+            ],
+        };
+        self.apply_delta_swaps(steps)
+    }
+
+    /// 対称変換を行った盤面を返す
+    ///
+    /// # Arguments
+    ///
+    /// * `sym` - 変換内容
+    ///
+    /// # Returns
+    ///
+    /// * `Board`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Point};
+    ///
+    /// for size in [BoardSize::Size4, BoardSize::Size6, BoardSize::Size8] {
+    ///     let n = size as usize;
+    ///     for row in 0..n {
+    ///         for col in 0..n {
+    ///             let point = Point::new(row, col);
+    ///             for sym in BoardSymmetry::ALL {
+    ///                 let board = Board::new(size, point.to_bit(size), 0);
+    ///                 let flip_board = board.flip(sym);
+    ///                 let black_points = flip_board.get_black_points();
+    ///                 let expect = point.transform(sym, size);
+    ///                 assert_eq!(black_points.len(), 1);
+    ///                 assert_eq!(black_points[0], expect);
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn flip(&self, sym: BoardSymmetry) -> Self {
+        match sym {
+            BoardSymmetry::Identity => self.clone(),
+            BoardSymmetry::Rotate90 => self.dflip().vflip(),
+            BoardSymmetry::Rotate180 => self.hflip().vflip(),
+            BoardSymmetry::Rotate270 => self.transpose().vflip(),
+            BoardSymmetry::FlipH => self.hflip(),
+            BoardSymmetry::FlipHRotate90 => self.dflip(),
+            BoardSymmetry::FlipHRotate180 => self.vflip(),
+            BoardSymmetry::FlipHRotate270 => self.transpose(),
+        }
+    }
+
+    /// 変換後のボードのイテレーターを返す
+    ///
+    /// # Returns
+    ///
+    /// * `Iterator<Item = (Self, BoardSymmetry)>`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry, Point};
+    ///
+    /// let board = Board::initialize(BoardSize::Size4);
+    /// for (flipped, sym) in board.get_all_symmetries() {
+    ///     // 何もしない
+    /// }
+    /// ```
+    pub fn get_all_symmetries(&self) -> impl Iterator<Item = (Self, BoardSymmetry)> {
+        BoardSymmetry::ALL
+            .into_iter()
+            .map(|sym| (self.flip(sym), sym))
+    }
+
+    /// 正規化されたボードとその変換方法を返す
+    ///
+    /// # Returns
+    ///
+    /// * `(Self, BoardSymmetry)` - 正規化後の盤面とその盤面への変換方法
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use reversi::{Board, BoardSize, BoardSymmetry};
+    ///
+    /// let board = Board::initialize(BoardSize::Size4);
+    /// let (canonical, sym) = board.get_canonical();
+    /// assert_eq!(canonical, board);
+    /// assert_eq!(sym, BoardSymmetry::Identity)
+    /// ```
+    pub fn get_canonical(&self) -> (Self, BoardSymmetry) {
+        self.get_all_symmetries()
+            .min_by(|(a, _), (b, _)| a.cmp(b))
+            .unwrap_or((self.clone(), BoardSymmetry::Identity))
     }
 }
