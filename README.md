@@ -67,3 +67,19 @@ $ cargo clippy --workspace --all-targets
 $ cargo test --workspace
 $ cargo +nightly llvm-cov --doctests --workspace --summary-only
 ```
+
+### Python
+
+#### format & linter
+
+```console
+$ uv run ruff check
+$ uv run ruff format
+$ uv run ty check
+```
+
+#### test
+
+```console
+$ uv run pytest --cov=py_trainer/src
+```

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "core",
+    "relay/pyo",
     "relay/tauri",
     "relay/wasm",
 ]

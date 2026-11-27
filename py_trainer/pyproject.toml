@@ -1,0 +1,37 @@
+[project]
+name = "reversi_trainer"
+dynamic = ["version"]
+description = "オセロAIの学習モジュール"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "click>=8.5.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "onnxruntime>=1.31.1",
+    "onnxscript>=0.7.2",
+    "pydantic>=2.14.2",
+    "reversi-core",
+    "torch>=2.15.0",
+    "tqdm>=4.70.1",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "reversi_trainer.__version__"}
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+train = "reversi_trainer.train:main"
+export = "reversi_trainer.export:main"
+
+[tool.uv.sources]
+reversi-core = { workspace = true }

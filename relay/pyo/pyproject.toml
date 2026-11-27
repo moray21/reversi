@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1.0"]
+build-backend = "maturin"
+
+
+[project]
+name = "reversi_core"
+version = "0.1.0+dev"
+description = "python module for reversi core with Rust bindings"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "maturin>=1.16.0",
+    "numpy>=2.5.4",
+]
+
+[tool.maturin]
+module-name = "reversi_core"
