@@ -1,85 +1,68 @@
 # Reversi
 
+オセロアプリ
+
+
+## Install Cargo-make
+
+```console
+$ cargo install cargo-make
+```
+
+
 ## How to play
 
-## Build
+1. Build as Desktop App
+
+    ```console
+    $ cargo make build
+    ```
+
+1. Run
+
+- Run by app image
+
+    ```console
+    $ cargo make run_desktop
+    ```
+
+- Install
+
+    1. install
+        ```console
+        $ cargo make install_desktop_app
+        ```
+
+    1. run
+        ```console
+        $ reversi
+        ```
+
+
+## Dev Commands
+
+### format & linter
 
 ```console
-$ (cd ./ui && npm run build)
-$ cargo tauri build
+$ cargo make check
+$ cargo make format
 ```
 
-## Run
-
-### Case: linux
-
-#### Run by app image
-
-1. change directory
-    ```console
-    $ cd target/release/bundle/appimage/
-    ```
-
-2. attach executable permission
-    ```console
-    $ chmod +x reversi_0.1.0_amd64.AppImage
-    ```
-
-3. run
-    ```console
-    $ ./reversi_0.1.0_amd64.AppImage
-    ```
-
-
-#### Install
-
-1. change directory
-    ```console
-    $ cd target/release/bundle/deb/
-    ```
-
-2. install
-    ```console
-    $ sudo apt install reversi_0.1.0_amd64.deb
-    ```
-
-3. run
-    ```console
-    $ reversi
-    ```
-
-
-## 開発時のコマンド
-
-### Rust
-
-#### format & linter
+### test
 
 ```console
-$ cargo check --workspace --all-targets
-$ cargo fmt --all
-$ cargo clippy --workspace --all-targets
+$ cargo make test
+$ cargo make coverage
 ```
 
-#### test
+### Clean
 
 ```console
-$ cargo test --workspace
-$ cargo +nightly llvm-cov --doctests --workspace --summary-only
+$ cargo make clean
 ```
 
-### Python
-
-#### format & linter
+### List commands
 
 ```console
-$ uv run ruff check
-$ uv run ruff format
-$ uv run ty check
-```
-
-#### test
-
-```console
-$ uv run pytest --cov=py_trainer/src
+$ cargo make --list-category-steps Custom
 ```
