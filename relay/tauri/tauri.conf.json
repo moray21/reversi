@@ -4,7 +4,9 @@
     "version": "0.2.0",
     "identifier": "com.game.reversi",
     "build": {
-        "frontendDist": "../../ui/dist"
+        "frontendDist": "../../ui/dist",
+        "beforeBuildCommand": "npm run build",
+        "beforeDevCommand": "npm run build"
     },
     "app": {
         "windows": [
