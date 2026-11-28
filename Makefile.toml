@@ -1,0 +1,168 @@
+[env]
+APP_VERSION = { script = ["python3 -c \"import json; print(json.load(open('relay/tauri/tauri.conf.json','rb'))['version'])\""] }
+APPIMAGE_PATH = "target/release/bundle/appimage/reversi_${APP_VERSION}_amd64.AppImage"
+APPDEB_PATH = "target/release/bundle/deb/reversi_${APP_VERSION}_amd64.deb"
+
+# ---------- Format ----------
+[tasks.format]
+category = "Custom"
+description = "フォーマットする"
+clear = true
+workspace = false
+dependencies = ["_rs-format", "_py-format"]
+
+[tasks._rs-format]
+category = "Custom"
+description = "Rustコードをフォーマットする"
+script = [
+    "cargo fmt",
+]
+
+[tasks._py-format]
+category = "Custom"
+description = "Pythonコードをフォーマットする"
+workspace = false
+script = [
+    "uv run ruff format",
+    "uv run ruff check --fix",
+]
+
+# ---------- lint & type check ----------
+[tasks.check]
+category = "Custom"
+description = "リンティングと型チェックをする"
+clear = true
+workspace = false
+dependencies = ["_rs-check", "_py-check"]
+
+[tasks._rs-check]
+category = "Custom"
+description = "Rustコードのリンティングと型チェックを行う"
+script = [
+    "cargo fmt --check",
+    "cargo check",
+    "cargo clippy",
+]
+
+[tasks._py-check]
+category = "Custom"
+description = "Pythonコードのリンティングと型チェックを行う"
+workspace = false
+script = [
+    "uv run ruff check",
+    "uv run ty check",
+]
+
+[tasks._ts-check]
+category = "Custom"
+description = "Typescriptコードのリンティングと型チェックを行う"
+workspace = false
+script = [
+    "cd ./ui",
+    "npm run lint",
+]
+
+# ---------- test ----------
+[tasks.test]
+category = "Custom"
+description = "テストコードを実行する"
+clear = true
+workspace = false
+dependencies = ["_rs-test", "_py-test"]
+
+[tasks._rs-test]
+category = "Custom"
+description = "Rustコードのテストコードを実行する"
+clear = true
+script = "cargo test"
+
+[tasks._py-test]
+category = "Custom"
+description = "Pythonコードのテストコードを実行する"
+workspace = false
+script = "uv run pytest"
+
+# ---------- coverage ----------
+[tasks.coverage]
+category = "Custom"
+description = "カバレッジを計測する"
+clear = true
+workspace = false
+dependencies = ["_rs-coverage", "_py-coverage"]
+
+[tasks._rs-coverage]
+category = "Custom"
+description = "Rustコードのカバレッジを計測する"
+workspace = false
+script = "cargo +nightly llvm-cov --doctests --workspace --summary-only"
+
+[tasks._py-coverage]
+category = "Custom"
+description = "Pythonコードのカバレッジを計測する"
+workspace = false
+script = "uv run pytest --cov=py_trainer/src"
+
+# ---------- build ----------
+[tasks.build]
+category = "Custom"
+description = "Tauriアプリをビルドする"
+clear = true
+workspace = false
+script = "cargo tauri build"
+
+# ---------- Run ----------
+[tasks.run]
+category = "Custom"
+description = "Reactサーバーを実行する"
+clear = true
+workspace = false
+dependencies = ["_build_wasm"]
+script = [
+    "cd ui",
+    "npm run dev",
+]
+
+[tasks.run_with_container]
+category = "Custom"
+description = "Reactサーバーを実行する"
+workspace = false
+dependencies = ["_build_wasm"]
+script = [
+    "cd ui",
+    "npm run dev -- --host 0.0.0.0",
+]
+
+[tasks._build_wasm]
+category = "Custom"
+description = "Wasmをビルドする"
+workspace = false
+script = [
+    "cd relay/wasm",
+    "wasm-pack build --target web --out-dir ../../ui/public/pkg",
+]
+
+[tasks.run_desktop]
+category = "Custom"
+description = "デスクトップアプリを実行する"
+workspace = false
+dependencies = ["_generate-appimage"]
+script = [
+    "chmod +x ${APPIMAGE_PATH}",
+    "./${APPIMAGE_PATH}",
+]
+
+[tasks._generate-appimage]
+clear = true
+workspace = false
+condition = { files_not_exist = ["${APPIMAGE_PATH}"] }
+dependencies = ["build"]
+
+# ---------- Install App ----------
+[tasks.install_desktop_app]
+category = "Custom"
+description = "デスクトップアプリをインストールする"
+workspace = false
+dependencies = ["_generate-appimage"]
+script = [
+    "sudo apt install ${APPDEB_PATH}",
+]

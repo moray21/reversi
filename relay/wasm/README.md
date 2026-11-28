@@ -3,7 +3,7 @@
 ## Build
 
 ```console
-$ wasm-pack build --target web --out-dir ../../ui/pkg
+$ wasm-pack build --target web --out-dir ../../ui/public/pkg
 ```
 
 ## Check
@@ -17,7 +17,5 @@ $ wasm-pack build --target web --out-dir ../../ui/pkg
 1. Run server
 
     ```console
-    $ uv run python -m http.server 8080
+    $ npm run dev
     ```
-
-1. Access to `http://localhost:8080` by browser
