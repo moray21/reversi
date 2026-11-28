@@ -982,9 +982,8 @@ impl Board {
 
         let mut black = 0;
         let mut white = 0;
-        for r in 0..n {
-            for c in 0..n {
-                let value = data[r][c];
+        for (r, row_vec) in data.iter().enumerate().take(n) {
+            for (c, &value) in row_vec.iter().enumerate().take(n) {
                 let point = Point::new(r, c);
                 if value == Disc::Black as i8 {
                     black |= point.to_bit(size);
